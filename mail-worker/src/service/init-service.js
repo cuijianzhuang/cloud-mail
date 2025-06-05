@@ -81,13 +81,14 @@ const initService = {
         (11, '用户删除', 'user:delete', 6, 2, 7),
         (12, '用户收藏', 'user:star', 6, 2, 5),
         (13, '权限控制', '', 0, 1, 5),
+		(30, '身份添加', 'role:add', 13, 2, -1),
         (14, '身份查看', 'role:query', 13, 2, 0),
         (15, '身份修改', 'role:set', 13, 2, 1),
         (16, '身份删除', 'role:delete', 13, 2, 2),
         (17, '系统设置', '', 0, 1, 6),
         (18, '设置查看', 'setting:query', 17, 2, 0),
         (19, '设置修改', 'setting:set', 17, 2, 1),
-        (20, '物理清空', 'seting:clear', 17, 2, 2),
+        (20, '物理清空', 'setting:clean', 17, 2, 2),
         (21, '邮箱侧栏', '', 0, 0, 1),
         (22, '邮箱查看', 'account:query', 21, 2, 0),
         (23, '邮箱添加', 'account:add', 21, 2, 1),
@@ -100,6 +101,8 @@ const initService = {
       `).run();
 		}
 
+		await c.env.db.prepare(`UPDATE perm SET perm_key = 'setting:clean' WHERE perm_key = 'seting:clear'`).run();
+		await c.env.db.prepare(`DELETE FROM perm WHERE perm_key = 'user:star'`).run();
 		// 创建 role 表并插入默认身份
 		await c.env.db.prepare(`
       CREATE TABLE IF NOT EXISTS role (
