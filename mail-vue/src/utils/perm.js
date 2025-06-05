@@ -52,7 +52,7 @@ const routers = {
         name: 'sys-email',
         component: () => import('@/views/sys-email/index.vue'),
         meta: {
-            title: '邮箱列表',
+            title: '邮件列表',
             name: 'sys-email',
             menu: true
         }
