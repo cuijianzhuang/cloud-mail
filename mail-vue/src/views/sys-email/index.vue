@@ -74,7 +74,7 @@ defineOptions({
 
 const emailStore = useEmailStore();
 const sysEmailScroll = ref({})
-const searchType = ref('user')
+const searchType = ref('name')
 const searchValue = ref('')
 const mySelect = ref()
 
