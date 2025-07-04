@@ -84,7 +84,7 @@ const openSelect = () => {
 
 const params = reactive({
   timeSort: 0,
-  type: 'all',
+  type: 'receive',
   userEmail: null,
   accountEmail: null,
   name: null,
@@ -102,7 +102,7 @@ const selectTitle = computed(() => {
 function refreshBefore() {
   searchValue.value = null
   params.timeSort = 0
-  params.type = 'all'
+  params.type = 'receive'
   params.userEmail = null
   params.accountEmail = null
   params.name = null
