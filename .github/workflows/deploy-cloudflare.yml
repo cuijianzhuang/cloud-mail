@@ -16,8 +16,10 @@ jobs:
 
     env:
       NAME: ${{ secrets.NAME || vars.NAME || 'cloud-mail' }}
-      CUSTOM_DOMAIN: ${{ secrets.CUSTOM_DOMAIN || vars.CUSTOM_DOMAIN }}
-      CUSTOM_DOMAIN_SOURCE: ${{ secrets.CUSTOM_DOMAIN != '' && 'repo-secret' || 'repo-variable' }}
+      # variable 优先，secret 只作为回退：secret 的值在日志里被打码，
+      # 一个过期的同名 secret 会静默压掉改好的 variable，很难排查
+      CUSTOM_DOMAIN: ${{ vars.CUSTOM_DOMAIN || secrets.CUSTOM_DOMAIN }}
+      CUSTOM_DOMAIN_SOURCE: ${{ vars.CUSTOM_DOMAIN != '' && 'repo-variable' || (secrets.CUSTOM_DOMAIN != '' && 'repo-secret' || 'unset') }}
       DOMAIN: ${{ secrets.DOMAIN || vars.DOMAIN }}
       ADMIN: ${{ secrets.ADMIN || vars.ADMIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET || vars.JWT_SECRET }}
@@ -98,7 +100,7 @@ jobs:
             echo "ℹ️ CUSTOM_DOMAIN 来源: ${CUSTOM_DOMAIN_SOURCE}, 前缀: ${CUSTOM_DOMAIN:0:4}..., 长度: ${#CUSTOM_DOMAIN}"
 
             if [ "$CUSTOM_DOMAIN_SOURCE" = "repo-secret" ]; then
-              echo "::warning:: CUSTOM_DOMAIN 取自 secret，同名 variable 会被忽略。改域名请改 secret，或删掉 secret 只留 variable"
+              echo "::warning:: CUSTOM_DOMAIN 取自 secret（variable 未设置）。建议改用 variable 配置域名，值在日志里可见，便于排查"
             fi
           fi
           
