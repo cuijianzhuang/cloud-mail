@@ -15,23 +15,28 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      NAME: ${{ secrets.NAME || vars.NAME || 'cloud-mail' }}
-      # variable 优先，secret 只作为回退：secret 的值在日志里被打码，
-      # 一个过期的同名 secret 会静默压掉改好的 variable，很难排查
+      # 非敏感配置：variable 优先，secret 只作为回退。
+      # secret 的值在日志里被打码，一个过期的同名 secret 会静默压掉改好的
+      # variable，几乎无法排查。真正的凭据仍然 secret 优先。
+      NAME: ${{ vars.NAME || secrets.NAME || 'cloud-mail' }}
       CUSTOM_DOMAIN: ${{ vars.CUSTOM_DOMAIN || secrets.CUSTOM_DOMAIN }}
-      CUSTOM_DOMAIN_SOURCE: ${{ vars.CUSTOM_DOMAIN != '' && 'repo-variable' || (secrets.CUSTOM_DOMAIN != '' && 'repo-secret' || 'unset') }}
-      DOMAIN: ${{ secrets.DOMAIN || vars.DOMAIN }}
-      ADMIN: ${{ secrets.ADMIN || vars.ADMIN }}
+      DOMAIN: ${{ vars.DOMAIN || secrets.DOMAIN }}
+      ADMIN: ${{ vars.ADMIN || secrets.ADMIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET || vars.JWT_SECRET }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || vars.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
-      D1_DATABASE_ID: ${{ secrets.D1_DATABASE_ID || vars.D1_DATABASE_ID }}
-      KV_NAMESPACE_ID: ${{ secrets.KV_NAMESPACE_ID || vars.KV_NAMESPACE_ID }}
-      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || vars.R2_BUCKET_NAME }}
-      PROJECT_LINK: ${{ secrets.PROJECT_LINK || vars.PROJECT_LINK }}
-      AI_MODEL: ${{ secrets.AI_MODEL || vars.AI_MODEL || '@cf/meta/llama-3.1-8b-instruct-fast' }}
-      CLOUDFLARE_EMAIL: ${{ secrets.CF_EMAIL || vars.CF_EMAIL || false }}
-      ANALYSIS_CACHE: ${{ secrets.ANALYSIS_CACHE || vars.ANALYSIS_CACHE || false }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || secrets.CLOUDFLARE_ACCOUNT_ID }}
+      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID || secrets.D1_DATABASE_ID }}
+      KV_NAMESPACE_ID: ${{ vars.KV_NAMESPACE_ID || secrets.KV_NAMESPACE_ID }}
+      R2_BUCKET_NAME: ${{ vars.R2_BUCKET_NAME || secrets.R2_BUCKET_NAME }}
+      PROJECT_LINK: ${{ vars.PROJECT_LINK || secrets.PROJECT_LINK }}
+      AI_MODEL: ${{ vars.AI_MODEL || secrets.AI_MODEL || '@cf/meta/llama-3.1-8b-instruct-fast' }}
+      CLOUDFLARE_EMAIL: ${{ vars.CF_EMAIL || secrets.CF_EMAIL || false }}
+      ANALYSIS_CACHE: ${{ vars.ANALYSIS_CACHE || secrets.ANALYSIS_CACHE || false }}
+
+      CUSTOM_DOMAIN_SOURCE: ${{ vars.CUSTOM_DOMAIN != '' && 'repo-variable' || (secrets.CUSTOM_DOMAIN != '' && 'repo-secret' || 'unset') }}
+      # 同时配了 secret 和 variable 的键，variable 生效、secret 被忽略
+      CONFIG_SHADOWED: >-
+        ${{ (vars.NAME != '' && secrets.NAME != '') && 'NAME ' || '' }}${{ (vars.CUSTOM_DOMAIN != '' && secrets.CUSTOM_DOMAIN != '') && 'CUSTOM_DOMAIN ' || '' }}${{ (vars.DOMAIN != '' && secrets.DOMAIN != '') && 'DOMAIN ' || '' }}${{ (vars.ADMIN != '' && secrets.ADMIN != '') && 'ADMIN ' || '' }}${{ (vars.CLOUDFLARE_ACCOUNT_ID != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '') && 'CLOUDFLARE_ACCOUNT_ID ' || '' }}${{ (vars.D1_DATABASE_ID != '' && secrets.D1_DATABASE_ID != '') && 'D1_DATABASE_ID ' || '' }}${{ (vars.KV_NAMESPACE_ID != '' && secrets.KV_NAMESPACE_ID != '') && 'KV_NAMESPACE_ID ' || '' }}${{ (vars.R2_BUCKET_NAME != '' && secrets.R2_BUCKET_NAME != '') && 'R2_BUCKET_NAME ' || '' }}${{ (vars.PROJECT_LINK != '' && secrets.PROJECT_LINK != '') && 'PROJECT_LINK ' || '' }}${{ (vars.AI_MODEL != '' && secrets.AI_MODEL != '') && 'AI_MODEL ' || '' }}${{ (vars.CF_EMAIL != '' && secrets.CF_EMAIL != '') && 'CF_EMAIL ' || '' }}${{ (vars.ANALYSIS_CACHE != '' && secrets.ANALYSIS_CACHE != '') && 'ANALYSIS_CACHE ' || '' }}
 
 
     outputs:
@@ -104,6 +109,10 @@ jobs:
             fi
           fi
           
+          if [ -n "$(printf '%s' "$CONFIG_SHADOWED" | tr -d '[:space:]')" ]; then
+            echo "::warning:: 这些键同时配了 secret 和 variable，实际生效的是 variable: ${CONFIG_SHADOWED}"
+          fi
+
           CONFIG_FILE="wrangler-action.toml"
           
           if [ -z "$R2_BUCKET_NAME" ]; then
