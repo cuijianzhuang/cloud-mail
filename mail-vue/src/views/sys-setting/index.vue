@@ -154,19 +154,8 @@
                   </el-tooltip>
                 </div>
                 <div>
-                  <el-select
-                      @change="change"
-                      :style="`width: ${ locale === 'en' ? 100 : 80 }px;`"
-                      v-model="setting.autoRefresh"
-                      placeholder="Select"
-                  >
-                    <el-option
-                        v-for="item in authRefreshOptions"
-                        :key="item.value"
-                        :label="item.label"
-                        :value="item.value"
-                    />
-                  </el-select>
+                  <el-switch @change="change" :before-change="beforeChange" :active-value="2" :inactive-value="1"
+                             v-model="setting.autoRefresh"/>
                 </div>
               </div>
               <div class="setting-item">
@@ -277,20 +266,6 @@
           <div class="settings-card">
             <div class="card-title">{{ $t('oss') }}</div>
             <div class="card-content">
-              <div class="r2domain-item">
-                <div>
-                  <span>{{ $t('osDomain') }}</span>
-                  <el-tooltip effect="dark" :content="$t('ossDomainDesc')">
-                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
-                  </el-tooltip>
-                </div>
-                <div class="r2domain">
-                  <span>{{ setting.r2Domain || '' }}</span>
-                  <el-button class="opt-button" size="small" type="primary" @click="r2DomainShow = true">
-                    <Icon icon="lsicon:edit-outline" width="16" height="16"/>
-                  </el-button>
-                </div>
-              </div>
               <div class="setting-item">
                 <div>
                   <span>{{ $t('s3Configuration') }}</span>
@@ -338,6 +313,25 @@
                 </div>
               </div>
               <div class="setting-item">
+                <div><span>{{ $t('loginVerification') }}</span></div>
+                <div>
+                  <el-button class="opt-button" size="small" type="primary"
+                             :aria-label="$t('rulesVerify')" @click="openLoginVerifyCount">
+                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
+                  </el-button>
+                  <el-select
+                      :model-value="setting.loginVerify"
+                      @change="changeField('loginVerify', $event)"
+                      :style="`width: ${ locale === 'en' ? 100 : 80 }px;`"
+                      class="bot-verify-select"
+                  >
+                    <el-option :value="0" :label="$t('enable')"/>
+                    <el-option :value="1" :label="$t('disable')"/>
+                    <el-option :value="2" :label="$t('rulesVerify')"/>
+                  </el-select>
+                </div>
+              </div>
+              <div class="setting-item">
                 <div><span>{{ $t('addEmailVerification') }}</span></div>
                 <div>
                   <el-button class="opt-button" size="small" type="primary" @click="openAddVerifyCount">
@@ -357,16 +351,16 @@
                 </div>
               </div>
               <div class="setting-item">
-                <div><span>Site Key</span></div>
+                <div><span>Site key</span></div>
                 <div class="bot-verify">
-                  <span>{{ setting.siteKey }}</span>
+                  <span>{{ maskSiteKey(setting.siteKey) }}</span>
                   <el-button class="opt-button" size="small" type="primary" @click="turnstileShow = true">
                     <Icon icon="lsicon:edit-outline" width="16" height="16"/>
                   </el-button>
                 </div>
               </div>
               <div class="setting-item">
-                <div><span>Secret Key</span></div>
+                <div><span>Secret key</span></div>
                 <div class="bot-verify">
                   <span> {{ setting.secretKey }} </span>
                   <el-button class="opt-button" size="small" type="primary" @click="turnstileShow = true">
@@ -474,7 +468,7 @@
               </div>
               <div class="concerning-item">
                 <span>{{ $t('support') }} : </span>
-                <el-button @click="jump('https://doc.skymail.ink/support.html')">
+                <el-button @click="jump('https://docs.skymail.ink/support.html')">
                   {{ t('supportDesc') }}
                   <template #icon>
                     <Icon color="#79D6B5" icon="simple-icons:buymeacoffee" width="20" height="20"/>
@@ -483,7 +477,7 @@
               </div>
               <div class="concerning-item">
                 <span>{{ $t('help') }} : </span>
-                <el-button @click="jump('https://doc.skymail.ink')">
+                <el-button @click="jump('https://docs.skymail.ink')">
                   {{ t('document') }}
                   <template #icon>
                     <Icon color="#79D6B5" icon="fluent-color:document-32" width="18" height="18"/>
@@ -516,18 +510,11 @@
           <el-button type="primary" :loading="settingLoading" @click="saveResendToken">{{ $t('save') }}</el-button>
         </form>
       </el-dialog>
-      <el-dialog v-model="r2DomainShow" :title="$t('addOsDomain')" width="340"
-                 @closed="r2DomainInput = setting.r2Domain">
-        <form @submit.prevent>
-          <el-input type="text" :placeholder="$t('domainDesc')" v-model="r2DomainInput" @keyup.enter="saveR2domain"/>
-          <el-button type="primary" :loading="settingLoading" @click="saveR2domain">{{ $t('save') }}</el-button>
-        </form>
-      </el-dialog>
       <el-dialog v-model="turnstileShow" :title="$t('addTurnstileSecret')" width="340"
                  @closed="turnstileForm.secretKey = '';turnstileForm.siteKey = ''">
         <form @submit.prevent>
-          <el-input type="text" placeholder="Site Key" v-model="turnstileForm.siteKey" @keyup.enter="saveTurnstileKey"/>
-          <el-input type="text" style="margin-top: 15px" placeholder="Secret Key" v-model="turnstileForm.secretKey" @keyup.enter="saveTurnstileKey"/>
+          <el-input type="text" placeholder="Site key" v-model="turnstileForm.siteKey" @keyup.enter="saveTurnstileKey"/>
+          <el-input type="text" style="margin-top: 15px" placeholder="Secret key" v-model="turnstileForm.secretKey" @keyup.enter="saveTurnstileKey"/>
           <el-button type="primary" :loading="settingLoading" @click="saveTurnstileKey">{{ $t('save') }}</el-button>
         </form>
       </el-dialog>
@@ -723,7 +710,7 @@ Authorization: &lt;secret&gt;</pre>
           </div>
         </template>
         <div class="forward-set-body">
-          <el-input-tag :placeholder="$t('ruleEmailsInputDesc')" tag-type="success" v-model="ruleEmail"
+          <el-input-tag :placeholder="$t('ruleUsersInputDesc')" tag-type="warning" v-model="ruleEmail"
                         @add-tag="ruleEmailAddTag"/>
         </div>
         <template #footer>
@@ -752,6 +739,13 @@ Authorization: &lt;secret&gt;</pre>
           <el-input-number type="text" v-model="regVerifyCount" :min="1" @keyup.enter="saveRegVerifyCount">
           </el-input-number>
           <el-button type="primary" :loading="settingLoading" @click="saveRegVerifyCount">{{ $t('save') }}</el-button>
+        </form>
+      </el-dialog>
+      <el-dialog v-model="loginVerifyCountShow" :title="$t('rulesVerifyTitle',{count: loginVerifyCount})"
+                 @closed="loginVerifyCount = setting.loginVerifyCount">
+        <form @submit.prevent="saveLoginVerifyCount">
+          <el-input-number v-model="loginVerifyCount" :min="1" :precision="0"/>
+          <el-button native-type="submit" type="primary" :loading="settingLoading">{{ $t('save') }}</el-button>
         </form>
       </el-dialog>
       <el-dialog v-model="addVerifyCountShow" :title="$t('rulesVerifyTitle',{count: addVerifyCount})"
@@ -839,9 +833,9 @@ Authorization: &lt;secret&gt;</pre>
           <el-input class="dialog-input" type="text" placeholder="Bucket" v-model="s3.bucket" @keyup.enter="saveS3"/>
           <el-input class="dialog-input" type="text" placeholder="Endpoint" v-model="s3.endpoint" @keyup.enter="saveS3"/>
           <el-input class="dialog-input" type="text" placeholder="Region" v-model="s3.region" @keyup.enter="saveS3"/>
-          <el-input class="dialog-input" type="text" :placeholder="setting.s3AccessKey || 'Access Key'"
+          <el-input class="dialog-input" type="text" :placeholder="setting.s3AccessKey || 'Access key'"
                     v-model="s3.s3AccessKey" @keyup.enter="saveS3"/>
-          <el-input style="margin-bottom: 10px" type="text" :placeholder="setting.s3SecretKey || 'Secret Key'" v-model="s3.s3SecretKey" @keyup.enter="saveS3"/>
+          <el-input style="margin-bottom: 10px" type="text" :placeholder="setting.s3SecretKey || 'Secret key'" v-model="s3.s3SecretKey" @keyup.enter="saveS3"/>
           <div class="force-path-style">
             <div class="force-path-style-left">
               <span>ForcePathStyle</span>
@@ -953,7 +947,7 @@ defineOptions({
   name: 'sys-setting'
 })
 
-const currentVersion = 'v3.3.0'
+const currentVersion = 'v3.6.0'
 const hasUpdate = ref(false)
 let getUpdateErrorCount = 1;
 const {t, locale} = useI18n();
@@ -968,7 +962,6 @@ const resendTokenFormShow = ref(false)
 const blackFormShow = ref(false)
 const autoCleanShow = ref(false)
 const aiCodeFilterShow = ref(false)
-const r2DomainShow = ref(false)
 const turnstileShow = ref(false)
 const tgSettingShow = ref(false)
 const noticePopupShow = ref(false)
@@ -983,7 +976,6 @@ const {settings: setting} = storeToRefs(settingStore);
 const editTitle = ref('')
 const settingLoading = ref(false)
 const clearS3Loading = ref(false)
-const r2DomainInput = ref('')
 const loginOpacity = ref(0)
 const minEmailPrefix = ref(0)
 const emailPrefixFilter = ref([])
@@ -993,11 +985,13 @@ const backgroundUrl = ref('')
 let backgroundFile = {}
 const showSetBackground = ref(false)
 let regVerifyCount = ref(1)
+const loginVerifyCount = ref(1)
 let addVerifyCount = ref(1)
 let backup = '{}'
 const addS3Show = ref(false)
 const addVerifyCountShow = ref(false)
 const regVerifyCountShow = ref(false)
+const loginVerifyCountShow = ref(false)
 const resendTokenForm = reactive({
   domain: '',
   token: '',
@@ -1054,15 +1048,6 @@ const blackListForm = ref({
 })
 const aiCodeFilter = ref([])
 
-const authRefreshOptions = computed(() => [
-  {label: t('disable'), value: 0},
-  {label: '3s', value: 3},
-  {label: '5s', value: 5},
-  {label: '10s', value: 10},
-  {label: '15s', value: 15},
-  {label: '20s', value: 20},
-])
-
 const tgChatId = ref([])
 const customDomain = ref('')
 const tgBotStatus = ref(0)
@@ -1102,6 +1087,10 @@ const tgMsgLabelWidth = computed(() => locale.value === 'en' ? '120px' : '100px'
 getSettings()
 getUpdate()
 
+function maskSiteKey(value) {
+  return value ? `${String(value).slice(0, 6)}******` : ''
+}
+
 function getSettings() {
   settingReady.value = false
   settingQuery().then(settingData => {
@@ -1113,9 +1102,9 @@ function getSettings() {
     firstLoading.value = false
     backgroundUrl.value = setting.value.background?.startsWith('http') ? setting.value.background : ''
     editTitle.value = setting.value.title
-    r2DomainInput.value = setting.value.r2Domain
     addVerifyCount.value = setting.value.addVerifyCount
     regVerifyCount.value = setting.value.regVerifyCount
+    loginVerifyCount.value = setting.value.loginVerifyCount
     resetNoticeForm()
     resetAddS3Form()
     resetEmailPrefix()
@@ -1140,6 +1129,11 @@ function openAddVerifyCount() {
 function openRegVerifyCount() {
   if (settingLoading.value) return
   regVerifyCountShow.value = true
+}
+
+function openLoginVerifyCount() {
+  if (settingLoading.value) return
+  loginVerifyCountShow.value = true
 }
 
 function resetAddS3Form() {
@@ -1199,6 +1193,10 @@ function saveRegVerifyCount() {
     regVerifyCount.value = 1
   }
   editSetting({regVerifyCount: regVerifyCount.value})
+}
+
+function saveLoginVerifyCount() {
+  editSetting({loginVerifyCount: loginVerifyCount.value || 1})
 }
 
 const compareByLengthAndUpperCase = (a, b, key) => {
@@ -1639,11 +1637,6 @@ function openCut() {
   }
 }
 
-function saveR2domain() {
-  const settingForm = {r2Domain: r2DomainInput.value}
-  editSetting(settingForm)
-}
-
 function openResendForm() {
   resendTokenFormShow.value = true
 }
@@ -1696,7 +1689,7 @@ function change(e) {
 }
 
 function changeField(key, value) {
-  if (!settingReady.value) return
+  if (!settingReady.value || settingLoading.value) return
   setting.value[key] = value
   editSetting({[key]: value}, false)
 }
@@ -1730,7 +1723,6 @@ function editSetting(settingForm, refreshStatus = true) {
       getSettings()
     }
     editTitleShow.value = false
-    r2DomainShow.value = false
     resendTokenFormShow.value = false
     turnstileShow.value = false
     tgSettingShow.value = false
@@ -1739,6 +1731,7 @@ function editSetting(settingForm, refreshStatus = true) {
     forwardRulesShow.value = false
     addVerifyCountShow.value = false
     regVerifyCountShow.value = false
+    loginVerifyCountShow.value = false
     noticePopupShow.value = false
     addS3Show.value = false
     emailPrefixShow.value = false
@@ -1886,21 +1879,6 @@ function editSetting(settingForm, refreshStatus = true) {
   min-width: 22px;
   flex-shrink: 0;
   margin-right: 2px;
-}
-
-.r2domain-item {
-  display: flex;
-  gap: 10px;
-  > div:first-child {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
-  > div:last-child {
-    flex: 1;
-    text-align: right;
-  }
 }
 
 .title-icon.warning {

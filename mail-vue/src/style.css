@@ -129,6 +129,7 @@ button, input, select, textarea {
     --choose-account-background: var(--el-color-primary-light-8);
     --el-text-color-regular: var(--el-text-color-primary);
     --email-scroll-content-color: rgba(25, 41, 59, 0.4);
+    --search-hit-background: #ffe58f;
     --email-hover-background: #F2F6FC;
     --email-right-click-background: #FDF6EC;
     --login-border: none;
@@ -139,10 +140,6 @@ button, input, select, textarea {
     --secondary-text-color: #909399;
     --message-block-color: rgba(0, 0, 0, 0);
     --loading-hide-transition: all 200ms;
-    --vt-x: 50%;
-    --vt-y: 50%;
-    --vt-duration: 520ms;
-    --vt-easing: ease-out;
 }
 
 .dark {
@@ -161,6 +158,7 @@ button, input, select, textarea {
     --aside-right-border: 3px 0 5px #0A0A0A;
     --choose-account-background: #39393A;
     --email-scroll-content-color: rgba(255, 255, 255, 0.3);
+    --search-hit-background: #8a6a12;
     --email-hover-background: #1D1E1F;
     --email-right-click-background: var(--email-hover-background);
     --login-border: none;
@@ -175,44 +173,4 @@ button, input, select, textarea {
 
 .el-input {
     --el-input-text-color: var(--el-text-color-primary) !important;
-}
-
-/* 视图过渡，基于径向剪裁 */
-html.dark,
-html:not(.dark) {
-    view-transition-name: root;
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-    animation: none;
-    mix-blend-mode: normal;
-}
-
-/* 层级控制，确保对应方向动画在上层可见 */
-html[data-theme-to="dark"]::view-transition-new(root) { z-index: 2; }
-html[data-theme-to="dark"]::view-transition-old(root) { z-index: 1; }
-html[data-theme-to="light"]::view-transition-old(root) { z-index: 2; }
-html[data-theme-to="light"]::view-transition-new(root) { z-index: 1; }
-
-/* 切到暗色：新视图从点击点向外扩散 */
-html[data-theme-to="dark"]::view-transition-new(root) {
-    clip-path: circle(0px at var(--vt-x) var(--vt-y));
-    animation: vt-radial-in var(--vt-duration) var(--vt-easing) forwards;
-}
-
-/* 切到浅色：旧视图向点击点收缩 */
-html[data-theme-to="light"]::view-transition-old(root) {
-    clip-path: circle(var(--vt-end-radius, 0px) at var(--vt-x) var(--vt-y));
-    animation: vt-radial-out var(--vt-duration) var(--vt-easing) forwards;
-}
-
-@keyframes vt-radial-in {
-    from { clip-path: circle(0px at var(--vt-x) var(--vt-y)); }
-    to   { clip-path: circle(var(--vt-end-radius, 0px) at var(--vt-x) var(--vt-y)); }
-}
-
-@keyframes vt-radial-out {
-    from { clip-path: circle(var(--vt-end-radius, 0px) at var(--vt-x) var(--vt-y)); }
-    to   { clip-path: circle(0px at var(--vt-x) var(--vt-y)); }
 }
