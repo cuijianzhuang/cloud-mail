@@ -68,6 +68,7 @@ const en = {
 	ruleMatchRequired: 'Fill in at least one match condition',
 	ruleActionRequired: 'Choose at least one action',
 	ruleNotExist: 'Rule does not exist',
+	draftNotExist: 'Draft does not exist',
 	emptyBotToken: 'Please verify that you are human',
 	botVerifyFail: 'Bot verification failed, please try again',
 	authExpired: 'Authentication has expired. Please sign in again',

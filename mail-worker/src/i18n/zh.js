@@ -68,6 +68,7 @@ const zh = {
 	ruleMatchRequired: '至少填写一个匹配条件',
 	ruleActionRequired: '至少选择一个动作',
 	ruleNotExist: '规则不存在',
+	draftNotExist: '草稿不存在',
 	emptyBotToken: '需要进行人机验证',
 	botVerifyFail: '人机验证失败,请重试',
 	authExpired: '身份认证失效,请重新登录',
