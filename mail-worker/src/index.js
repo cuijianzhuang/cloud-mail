@@ -1,6 +1,7 @@
 import app from './hono/webs';
 import { email } from './email/email';
 import userService from './service/user-service';
+import scheduledSendService from './service/scheduled-send-service';
 import verifyRecordService from './service/verify-record-service';
 import emailService from './service/email-service';
 import r2Service from './service/r2-service';
@@ -45,8 +46,10 @@ export default {
 	},
 	email: email,
 	async scheduled(c, env, ctx) {
-		if (c.cron === '*/30 * * * *') {
-			await analysisService.refreshEchartsCache({ env })
+		// 定时发送每 5 分钟扫一次；其余清理任务只在整点 cron 跑
+		await scheduledSendService.dispatch({ env });
+
+		if (c.cron !== '0 * * * *') {
 			return;
 		}
 

@@ -27,6 +27,7 @@
                     <el-dropdown-item v-if="hasPerm('email:send')" @click="openSetName(item)">{{ $t('rename') }}</el-dropdown-item>
                     <el-dropdown-item v-if="hasPerm('email:send')" @click="openSignature(item)">{{ $t('setSignature') }}</el-dropdown-item>
                     <el-dropdown-item v-if="item.accountId !== userStore.user.account.accountId" @click="setAsTop(item, index)">{{ $t('pin') }}</el-dropdown-item>
+                    <el-dropdown-item @click="exportAccount(item)">{{ $t('exportMailbox') }}</el-dropdown-item>
                     <el-dropdown-item v-if="item.accountId !== userStore.user.account.accountId && hasPerm('account:delete')"
                                       @click="remove(item)">{{ $t('delete') }}
                     </el-dropdown-item>
@@ -158,6 +159,7 @@ import {hasPerm} from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
 import {AccountAllReceiveEnum} from "@/enums/account-enum.js";
 import {reloadTurnstileScript} from "@/utils/turnstile-script.js";
+import {exportMbox} from "@/request/export.js";
 
 const {t} = useI18n();
 const userStore = useUserStore();
@@ -410,6 +412,10 @@ function setAsTop(account, index) {
     accounts.splice(1, 0, item);
 
   });
+}
+
+async function exportAccount(item) {
+  await exportMbox(item.accountId);
 }
 
 async function copyAccount(account) {

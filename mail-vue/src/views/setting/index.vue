@@ -75,6 +75,10 @@
         </div>
       </div>
     </div>
+    <div class="preference-item">
+      <div class="title">{{$t('mailRule')}}</div>
+      <MailRules/>
+    </div>
     <div class="del-email" v-perm="'my:delete'">
       <div class="title">{{$t('deleteUser')}}</div>
       <div style="color: var(--regular-text-color);">
@@ -109,6 +113,7 @@ import {oauthBindList, oauthUnbind} from "@/request/ouath.js";
 import {oauthPlatforms, toOauthAuthorize} from "@/utils/oauth-utils.js";
 import {useUiStore} from "@/store/ui.js";
 import ThemeSelector from "@/components/theme-selector/index.vue";
+import MailRules from "@/components/mail-rules/index.vue";
 
 const { t } = useI18n()
 const accountStore = useAccountStore()

@@ -24,9 +24,24 @@ const dbInit = {
 		await this.v3_4DB(c);
 		await this.v3_5DB(c);
 		await this.v3_6DB(c);
+		await this.v3_7DB(c);
 		await userService.initAdmin(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v3_7DB(c) {
+		try {
+			await c.env.db.batch([
+				c.env.db.prepare(`CREATE VIRTUAL TABLE IF NOT EXISTS email_fts USING fts5(email_id UNINDEXED, subject, body, name, send_email, to_email, tokenize = 'trigram')`),
+				c.env.db.prepare(`CREATE TRIGGER IF NOT EXISTS email_fts_ai AFTER INSERT ON email BEGIN INSERT INTO email_fts(email_id, subject, body, name, send_email, to_email) VALUES (new.email_id, new.subject, new.text, new.name, new.send_email, new.to_email); END`),
+				c.env.db.prepare(`CREATE TRIGGER IF NOT EXISTS email_fts_ad AFTER DELETE ON email BEGIN DELETE FROM email_fts WHERE email_id = old.email_id; END`),
+				c.env.db.prepare(`CREATE TRIGGER IF NOT EXISTS email_fts_au AFTER UPDATE OF subject, text, name, send_email, to_email ON email BEGIN UPDATE email_fts SET subject = new.subject, body = new.text, name = new.name, send_email = new.send_email, to_email = new.to_email WHERE email_id = old.email_id; END`),
+				c.env.db.prepare(`INSERT INTO email_fts(email_id, subject, body, name, send_email, to_email) SELECT email_id, subject, text, name, send_email, to_email FROM email WHERE NOT EXISTS (SELECT 1 FROM email_fts LIMIT 1)`)
+			]);
+		} catch (e) {
+			console.warn(`sql skip:${e.message}`);
+		}
 	},
 
 	async v3_6DB(c) {
@@ -306,6 +321,31 @@ const dbInit = {
 						account_id INTEGER PRIMARY KEY,
 						user_id INTEGER NOT NULL,
 						signature TEXT NOT NULL DEFAULT '',
+					CREATE TABLE IF NOT EXISTS scheduled_send (
+						schedule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					CREATE TABLE IF NOT EXISTS mail_rule (
+						rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+						name TEXT NOT NULL DEFAULT '',
+						from_match TEXT NOT NULL DEFAULT '',
+						subject_match TEXT NOT NULL DEFAULT '',
+						content_match TEXT NOT NULL DEFAULT '',
+						action_star INTEGER NOT NULL DEFAULT 0,
+						action_read INTEGER NOT NULL DEFAULT 0,
+						action_delete INTEGER NOT NULL DEFAULT 0,
+						forward_to TEXT NOT NULL DEFAULT '',
+						enabled INTEGER NOT NULL DEFAULT 1,
+						create_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+					CREATE TABLE IF NOT EXISTS draft (
+						draft_id INTEGER PRIMARY KEY AUTOINCREMENT,
+						account_id INTEGER NOT NULL DEFAULT 0,
+						subject TEXT NOT NULL DEFAULT '',
+						receive_email TEXT NOT NULL DEFAULT '[]',
+						data TEXT NOT NULL DEFAULT '{}',
+						send_at TEXT NOT NULL,
+						status INTEGER NOT NULL DEFAULT 0,
+						error TEXT NOT NULL DEFAULT '',
+						create_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+						create_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 						update_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
 					)
 				`),

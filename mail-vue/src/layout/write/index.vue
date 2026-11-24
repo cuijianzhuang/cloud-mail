@@ -133,6 +133,9 @@
                   <el-dropdown-item command="divide">
                     {{ separateSendLabel }}
                   </el-dropdown-item>
+                  <el-dropdown-item command="schedule">
+                    {{ $t('scheduleSend') }}
+                  </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -140,6 +143,13 @@
         </div>
       </div>
     </div>
+    <el-dialog v-model="scheduleShow" :title="$t('scheduleSend')" width="380">
+      <el-date-picker v-model="scheduleTime" type="datetime" :placeholder="$t('scheduleTimePlaceholder')" style="width: 100%"/>
+      <template #footer>
+        <el-button @click="scheduleShow = false">{{$t('cancel')}}</el-button>
+        <el-button type="primary" :loading="scheduleLoading" @click="confirmSchedule">{{$t('confirm')}}</el-button>
+      </template>
+    </el-dialog>
     <el-dialog top="10vh" v-model="showContacts" @closed="clearSelectContact" :title="t('recentContacts')">
       <el-table class="contacts-table" ref="contactsTabRef" row-key="email" :data="contacts" style="height: 445px" @row-click="toggleContactRow">
         <el-table-column type="selection" width="32" />
@@ -168,8 +178,9 @@ import tinyEditor from '@/components/tiny-editor/index.vue'
 import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
-import {emailSend} from "@/request/email.js";
+import {emailSend, emailRecipients} from "@/request/email.js";
 import {accountSignature} from "@/request/account.js";
+import {scheduledCreate} from "@/request/scheduled.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
@@ -181,7 +192,7 @@ import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
 import {userDraftStore} from "@/store/draft.js";
 import {useWriterStore} from "@/store/writer.js";
-import db from "@/db/db.js";
+import {draftSave} from "@/request/draft.js";
 import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
@@ -249,7 +260,18 @@ const suggestListMap = { receive: selectRecipientList, cc: ccSuggestList, bcc: b
 const suggestSelectMap = { receive: mySelect, cc: ccSelectRef, bcc: bccSelectRef }
 const suggestFieldMap = { receive: 'receiveEmail', cc: 'ccEmail', bcc: 'bccEmail' }
 
-const contacts = computed(() => writerStore.sendRecipientRecord.map(item => ({email: item})))
+const allContactEmails = computed(() => {
+  const seen = new Set()
+  const list = []
+  for (const item of [...writerStore.sendRecipientRecord, ...writerStore.serverContacts]) {
+    const key = String(item).toLowerCase()
+    if (seen.has(key) || writerStore.hiddenContacts.includes(key)) continue
+    seen.add(key)
+    list.push(item)
+  }
+  return list
+})
+const contacts = computed(() => allContactEmails.value.map(item => ({email: item})))
 const togetherSendLabel = computed(() => {
   if (form.sendType === 'reply') return t('reply')
   if (form.sendType === 'forward') return t('forward')
@@ -273,9 +295,47 @@ function clearCcBcc() {
 }
 
 function selectSendMode(mode) {
+  if (mode === 'schedule') {
+    scheduleShow.value = true
+    return
+  }
   form.manyType = mode
   if (mode === 'divide') {
     clearCcBcc()
+  }
+}
+
+const scheduleShow = ref(false)
+const scheduleTime = ref(null)
+const scheduleLoading = ref(false)
+
+async function confirmSchedule() {
+  if (!scheduleTime.value) return
+  if (!form.receiveEmail.length) {
+    ElMessage({message: t('emptyRecipientMsg'), type: 'error', plain: true})
+    return
+  }
+  form.content = editor.value.getContent();
+  if (!form.content) {
+    ElMessage({message: t('emptyContentMsg'), type: 'error', plain: true})
+    return
+  }
+  scheduleLoading.value = true
+  try {
+    await scheduledCreate({sendAt: new Date(scheduleTime.value).toISOString(), data: {...toRaw(form)}})
+    ElMessage({message: t('scheduleSuccessMsg'), type: 'success', plain: true})
+    scheduleShow.value = false
+    addRecipientRecord()
+    if (form.draftId) {
+      form.subject = ''
+      form.content = ''
+      form.receiveEmail = []
+      draftStore.setDraft = {...toRaw(form)}
+    }
+    show.value = false
+    resetForm()
+  } finally {
+    scheduleLoading.value = false
   }
 }
 
@@ -307,6 +367,7 @@ function deleteContact() {
     const key = targetAddressKey()
     form[key] = form[key].filter(item => !contactList.includes(item));
     writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.filter(item => !contactList.includes(item));
+    writerStore.hiddenContacts = [...new Set([...writerStore.hiddenContacts, ...contactList.map(item => String(item).toLowerCase())])];
   })
 }
 
@@ -350,7 +411,7 @@ function suggestChange(target, value) {
 
 function updateSuggest(target, value) {
   const field = suggestFieldMap[target]
-  const list = writerStore.sendRecipientRecord.filter(item => value && !form[field].includes(item) && item.startsWith(value)).slice(0, 10)
+  const list = allContactEmails.value.filter(item => value && !form[field].includes(item) && item.startsWith(value)).slice(0, 10)
   suggestListMap[target].value = list
 
   if (!suggestOpen[target] && list.length > 0) {
@@ -732,6 +793,9 @@ const handleKeyDown = (event) => {
 };
 
 onMounted(() => {
+  emailRecipients().then(data => {
+    writerStore.serverContacts = data.list || []
+  }).catch(() => {})
   window.addEventListener('keydown', handleKeyDown);
 });
 
@@ -782,10 +846,13 @@ function close() {
   }).then(async () => {
     const formData = {...toRaw(form)};
     delete formData.draftId
-    delete formData.attachments
     formData.createTime = dayjs().utc().format('YYYY-MM-DD HH:mm:ss');
-    const draftId = await db.value.draft.add({...formData})
-    db.value.att.add({draftId, attachments: toRaw(form.attachments)})
+    await draftSave({
+      accountId: formData.accountId,
+      subject: formData.subject,
+      receiveEmail: formData.receiveEmail,
+      data: formData
+    })
     draftStore.refreshList++
     show.value = false
     await nextTick(() => {

@@ -33,6 +33,48 @@ import proxyService from './proxy-service';
 
 const emailService = {
 
+	// 联系人候选：从最近 3000 封收发里聚合地址，按频次排序，供写信补全跨设备使用
+	async recipients(c, userId) {
+		const rows = await orm(c).select({
+			type: email.type,
+			sendEmail: email.sendEmail,
+			recipient: email.recipient,
+			cc: email.cc,
+		}).from(email)
+			.where(and(eq(email.userId, userId), eq(email.isDel, isDel.NORMAL)))
+			.orderBy(desc(email.emailId)).limit(3000).all();
+
+		const own = new Set();
+		const accountRows = await orm(c).select({ email: account.email }).from(account)
+			.where(eq(account.userId, userId)).all();
+		accountRows.forEach(row => own.add((row.email || '').toLowerCase()));
+
+		const stats = new Map();
+		const add = (addr) => {
+			const value = (addr || '').trim();
+			const key = value.toLowerCase();
+			if (!value || own.has(key) || !value.includes('@')) return;
+			stats.set(key, { email: value, count: (stats.get(key)?.count || 0) + 1 });
+		};
+		const addJson = (json) => {
+			try {
+				(JSON.parse(json || '[]') || []).forEach(item => add(typeof item === 'string' ? item : item?.address));
+			} catch {}
+		};
+
+		for (const row of rows) {
+			if (row.type === emailConst.type.SEND) {
+				addJson(row.recipient);
+				addJson(row.cc);
+			} else {
+				add(row.sendEmail);
+			}
+		}
+
+		const list = [...stats.values()].sort((a, b) => b.count - a.count).slice(0, 500).map(item => item.email);
+		return { list };
+	},
+
 	async list(c, params, userId) {
 
 		let {
@@ -215,6 +257,16 @@ const emailService = {
 		)`;
 	},
 
+	// 关键词长度 >= 3 时走 FTS5 trigram 索引（子串语义与 LIKE %x% 一致）；
+	// 更短的词 trigram 无法匹配，返回 null 让调用方回退 LIKE。
+	ftsCondition(keyword, columns) {
+		const kw = (keyword || '').trim();
+		if (kw.length < 3) return null;
+		const phrase = '"' + kw.replace(/"/g, '""') + '"';
+		const match = `{${columns}} : ${phrase}`;
+		return sql`${email.emailId} IN (SELECT email_id FROM email_fts WHERE email_fts MATCH ${match})`;
+	},
+
 	emailListFilters({
 		userId,
 		accountId,
@@ -245,11 +297,11 @@ const emailService = {
 			const searchText = `%${text.trim()}%`;
 
 			if (searchType === 'subject') {
-				conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${searchText}`);
+				conditions.push(this.ftsCondition(text, 'subject') ?? sql`${email.subject} COLLATE NOCASE LIKE ${searchText}`);
 			}
 
 			if (searchType === 'content') {
-				conditions.push(
+				conditions.push(this.ftsCondition(text, 'body') ??
 					or(
 						sql`${email.text} COLLATE NOCASE LIKE ${searchText}`,
 						sql`${email.content} COLLATE NOCASE LIKE ${searchText}`,
@@ -258,15 +310,15 @@ const emailService = {
 			}
 
 			if (searchType === 'sender') {
-				conditions.push(sql`${email.name} COLLATE NOCASE LIKE ${searchText}`);
+				conditions.push(this.ftsCondition(text, 'name') ?? sql`${email.name} COLLATE NOCASE LIKE ${searchText}`);
 			}
 
 			if (searchType === 'senderAddress') {
-				conditions.push(sql`${email.sendEmail} COLLATE NOCASE LIKE ${searchText}`);
+				conditions.push(this.ftsCondition(text, 'send_email') ?? sql`${email.sendEmail} COLLATE NOCASE LIKE ${searchText}`);
 			}
 
 			if (searchType === 'recipientAddress') {
-				conditions.push(sql`${email.toEmail} COLLATE NOCASE LIKE ${searchText}`);
+				conditions.push(this.ftsCondition(text, 'to_email') ?? sql`${email.toEmail} COLLATE NOCASE LIKE ${searchText}`);
 			}
 		}
 
@@ -317,15 +369,15 @@ const emailService = {
 			const searchText = `%${text.trim()}%`;
 
 			if (searchType === 'subject') {
-				conditions.push(sql`${email.subject} COLLATE NOCASE LIKE ${searchText}`);
+				conditions.push(this.ftsCondition(text, 'subject') ?? sql`${email.subject} COLLATE NOCASE LIKE ${searchText}`);
 			}
 
 			if (searchType === 'sender') {
-				conditions.push(sql`${email.name} COLLATE NOCASE LIKE ${searchText}`);
+				conditions.push(this.ftsCondition(text, 'name') ?? sql`${email.name} COLLATE NOCASE LIKE ${searchText}`);
 			}
 
 			if (searchType === 'senderAddress') {
-				conditions.push(sql`${email.sendEmail} COLLATE NOCASE LIKE ${searchText}`);
+				conditions.push(this.ftsCondition(text, 'send_email') ?? sql`${email.sendEmail} COLLATE NOCASE LIKE ${searchText}`);
 			}
 
 			if (searchType === 'user') {
