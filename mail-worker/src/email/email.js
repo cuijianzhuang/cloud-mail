@@ -12,6 +12,7 @@ import userService from '../service/user-service';
 import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
 import webhookService from '../service/webhook-service';
+import ruleService from '../service/rule-service';
 import { notifyMailWs } from '../websocket/notify';
 
 export async function email(message, env, ctx) {
@@ -172,6 +173,9 @@ export async function email(message, env, ctx) {
 				return;
 			}
 		}
+
+		//按用户收信规则处理（星标/已读/转发/删除）
+		await ruleService.applyRules({ env }, emailRow, async (addr) => { await message.forward(addr); });
 
 		//转发到TG
 		if (tgBotStatus === settingConst.tgBotStatus.OPEN && tgChatId) {
