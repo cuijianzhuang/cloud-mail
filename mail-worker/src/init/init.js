@@ -302,6 +302,14 @@ const dbInit = {
 					)
 				`),
 				c.env.db.prepare(`
+					CREATE TABLE IF NOT EXISTS account_signature (
+						account_id INTEGER PRIMARY KEY,
+						user_id INTEGER NOT NULL,
+						signature TEXT NOT NULL DEFAULT '',
+						update_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+					)
+				`),
+				c.env.db.prepare(`
 					CREATE TABLE IF NOT EXISTS attachments (
 						att_id INTEGER PRIMARY KEY AUTOINCREMENT,
 						user_id INTEGER NOT NULL,

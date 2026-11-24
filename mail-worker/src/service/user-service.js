@@ -20,6 +20,7 @@ import {oauth} from "../entity/oauth";
 import oauthService from "./oauth-service";
 import settingService from './setting-service';
 import starService from './star-service';
+import signatureService from './signature-service';
 import userContext from '../security/user-context';
 
 const userService = {
@@ -125,6 +126,7 @@ const userService = {
 		let { userIds } = params;
 		userIds = userIds.split(',').map(Number);
 		await starService.removeByUserIds(c, userIds);
+		await signatureService.removeByUserIds(c, userIds);
 		await accountService.physicsDeleteByUserIds(c, userIds);
 		await oauthService.deleteByUserIds(c, userIds);
 		await orm(c).delete(user).where(inArray(user.userId, userIds)).run();

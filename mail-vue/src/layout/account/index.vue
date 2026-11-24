@@ -25,6 +25,7 @@
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item v-if="hasPerm('email:send')" @click="openSetName(item)">{{ $t('rename') }}</el-dropdown-item>
+                    <el-dropdown-item v-if="hasPerm('email:send')" @click="openSignature(item)">{{ $t('setSignature') }}</el-dropdown-item>
                     <el-dropdown-item v-if="item.accountId !== userStore.user.account.accountId" @click="setAsTop(item, index)">{{ $t('pin') }}</el-dropdown-item>
                     <el-dropdown-item v-if="item.accountId !== userStore.user.account.accountId && hasPerm('account:delete')"
                                       @click="remove(item)">{{ $t('delete') }}
@@ -116,6 +117,13 @@
         <span style="font-size: 12px;color: #F56C6C" v-if="botJsError">{{ $t('verifyModuleFailed', {action: $t('add')}) }}</span>
       </div>
     </el-dialog>
+    <el-dialog v-model="signatureShow" :title="$t('setSignature')" width="420">
+      <el-input type="textarea" :rows="5" v-model="signatureText" :placeholder="$t('signaturePlaceholder')"/>
+      <template #footer>
+        <el-button @click="signatureShow = false">{{$t('cancel')}}</el-button>
+        <el-button type="primary" @click="saveSignature">{{$t('save')}}</el-button>
+      </template>
+    </el-dialog>
     <el-dialog v-model="setNameShow" :title="$t('changeUserName')">
       <div class="container">
         <el-input v-model="accountName" type="text" :placeholder="$t('username')" autocomplete="off" @keyup.enter="setName">
@@ -136,7 +144,9 @@ import {
   accountDelete,
   accountSetName,
   accountSetAllReceive,
-  accountSetAsTop
+  accountSetAsTop,
+  accountSignature,
+  accountSetSignature
 } from "@/request/account.js";
 import {sleep} from "@/utils/time-utils.js"
 import {isEmail} from "@/utils/verify-utils.js";
@@ -163,6 +173,9 @@ const loading = ref(false)
 const followLoading = ref(false);
 const verifyShow = ref(false)
 const setNameShow = ref(false)
+const signatureShow = ref(false)
+const signatureText = ref('')
+const signatureAccount = ref(null)
 const setNameLoading = ref(false)
 const accountName = ref(null)
 const addRef = ref({})
@@ -290,6 +303,19 @@ function setName() {
   }).finally(() => {
     setNameLoading.value = false
   })
+}
+
+async function openSignature(accountItem) {
+  signatureAccount.value = accountItem
+  const data = await accountSignature(accountItem.accountId)
+  signatureText.value = data.signature || ''
+  signatureShow.value = true
+}
+
+async function saveSignature() {
+  await accountSetSignature(signatureAccount.value.accountId, signatureText.value)
+  signatureShow.value = false
+  ElMessage({message: t('saveSuccessMsg'), type: 'success', plain: true})
 }
 
 function openSetName(accountItem) {
