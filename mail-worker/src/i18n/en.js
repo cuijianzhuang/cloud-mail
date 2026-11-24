@@ -65,6 +65,7 @@ const en = {
 	noOsUpBack: 'Cannot upload background: object storage not configured',
 	noOsDomainUpBack: 'Cannot upload background: object storage domain not configured',
 	starNotExistEmail: 'Starred email does not exist',
+	exportNotExistEmail: 'The email to export does not exist',
 	ruleMatchRequired: 'Fill in at least one match condition',
 	ruleActionRequired: 'Choose at least one action',
 	ruleNotExist: 'Rule does not exist',

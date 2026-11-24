@@ -29,6 +29,8 @@ const zh = {
     save: '保存',
     profile: '账户与密码',
     accountBind: '账号绑定',
+    exportEml: '导出 .eml',
+    exportMailbox: '导出邮箱',
     edit: '编辑',
     mailRule: '收信规则',
     addRule: '添加规则',

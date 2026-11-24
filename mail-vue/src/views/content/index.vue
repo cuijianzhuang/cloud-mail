@@ -9,6 +9,7 @@
       </span>
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="fluent-mdl2:reply" width="19" height="19" />
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <Icon class="icon" @click="handleExport" icon="material-symbols-light:download" width="20" height="20" :title="$t('exportEml')"/>
     </div>
     <div></div>
     <el-scrollbar class="scrollbar">
@@ -87,6 +88,7 @@ import {computed, reactive, ref, watch, onMounted, onUnmounted, nextTick} from "
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailRead} from "@/request/email.js";
+import {exportEml} from "@/request/export.js";
 import {Icon} from "@iconify/vue";
 import {useEmailStore} from "@/store/email.js";
 import {useAccountStore} from "@/store/account.js";
@@ -292,6 +294,10 @@ function changeStar() {
 const handleBack = () => {
   router.back()
 }
+
+const handleExport = async () => {
+  await exportEml(email.value.emailId, email.value.subject);
+};
 
 const handleDelete = () => {
   ElMessageBox.confirm(t('delEmailConfirm'), {

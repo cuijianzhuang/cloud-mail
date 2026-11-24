@@ -65,6 +65,7 @@ const zh = {
 	noOsUpBack: '对象存储未配置不能上传背景',
 	noOsDomainUpBack: '对象存储域名未配置不能上传背景',
 	starNotExistEmail: '星标的邮件不存在',
+	exportNotExistEmail: '要导出的邮件不存在',
 	ruleMatchRequired: '至少填写一个匹配条件',
 	ruleActionRequired: '至少选择一个动作',
 	ruleNotExist: '规则不存在',
