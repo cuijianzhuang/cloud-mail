@@ -132,6 +132,9 @@
                   <el-dropdown-item command="divide">
                     {{ separateSendLabel }}
                   </el-dropdown-item>
+                  <el-dropdown-item command="schedule">
+                    {{ $t('scheduleSend') }}
+                  </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -139,6 +142,13 @@
         </div>
       </div>
     </div>
+    <el-dialog v-model="scheduleShow" :title="$t('scheduleSend')" width="380">
+      <el-date-picker v-model="scheduleTime" type="datetime" :placeholder="$t('scheduleTimePlaceholder')" style="width: 100%"/>
+      <template #footer>
+        <el-button @click="scheduleShow = false">{{$t('cancel')}}</el-button>
+        <el-button type="primary" :loading="scheduleLoading" @click="confirmSchedule">{{$t('confirm')}}</el-button>
+      </template>
+    </el-dialog>
     <el-dialog top="10vh" v-model="showContacts" @closed="clearSelectContact" :title="t('recentContacts')">
       <el-table class="contacts-table" ref="contactsTabRef" row-key="email" :data="contacts" style="height: 445px" @row-click="toggleContactRow">
         <el-table-column type="selection" width="32" />
@@ -168,6 +178,7 @@ import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} fro
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend, emailRecipients} from "@/request/email.js";
+import {scheduledCreate} from "@/request/scheduled.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
@@ -281,9 +292,47 @@ function clearCcBcc() {
 }
 
 function selectSendMode(mode) {
+  if (mode === 'schedule') {
+    scheduleShow.value = true
+    return
+  }
   form.manyType = mode
   if (mode === 'divide') {
     clearCcBcc()
+  }
+}
+
+const scheduleShow = ref(false)
+const scheduleTime = ref(null)
+const scheduleLoading = ref(false)
+
+async function confirmSchedule() {
+  if (!scheduleTime.value) return
+  if (!form.receiveEmail.length) {
+    ElMessage({message: t('emptyRecipientMsg'), type: 'error', plain: true})
+    return
+  }
+  form.content = editor.value.getContent();
+  if (!form.content) {
+    ElMessage({message: t('emptyContentMsg'), type: 'error', plain: true})
+    return
+  }
+  scheduleLoading.value = true
+  try {
+    await scheduledCreate({sendAt: new Date(scheduleTime.value).toISOString(), data: {...toRaw(form)}})
+    ElMessage({message: t('scheduleSuccessMsg'), type: 'success', plain: true})
+    scheduleShow.value = false
+    addRecipientRecord()
+    if (form.draftId) {
+      form.subject = ''
+      form.content = ''
+      form.receiveEmail = []
+      draftStore.setDraft = {...toRaw(form)}
+    }
+    show.value = false
+    resetForm()
+  } finally {
+    scheduleLoading.value = false
   }
 }
 
