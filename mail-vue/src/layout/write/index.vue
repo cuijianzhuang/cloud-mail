@@ -179,7 +179,7 @@ import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
 import {userDraftStore} from "@/store/draft.js";
 import {useWriterStore} from "@/store/writer.js";
-import db from "@/db/db.js";
+import {draftSave} from "@/request/draft.js";
 import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
@@ -773,10 +773,13 @@ function close() {
   }).then(async () => {
     const formData = {...toRaw(form)};
     delete formData.draftId
-    delete formData.attachments
     formData.createTime = dayjs().utc().format('YYYY-MM-DD HH:mm:ss');
-    const draftId = await db.value.draft.add({...formData})
-    db.value.att.add({draftId, attachments: toRaw(form.attachments)})
+    await draftSave({
+      accountId: formData.accountId,
+      subject: formData.subject,
+      receiveEmail: formData.receiveEmail,
+      data: formData
+    })
     draftStore.refreshList++
     show.value = false
     await nextTick(() => {
