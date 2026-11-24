@@ -65,6 +65,7 @@ const zh = {
 	noOsUpBack: '对象存储未配置不能上传背景',
 	noOsDomainUpBack: '对象存储域名未配置不能上传背景',
 	starNotExistEmail: '星标的邮件不存在',
+	scheduleTimeInvalid: '定时发送时间必须在未来',
 	emptyBotToken: '需要进行人机验证',
 	botVerifyFail: '人机验证失败,请重试',
 	authExpired: '身份认证失效,请重新登录',

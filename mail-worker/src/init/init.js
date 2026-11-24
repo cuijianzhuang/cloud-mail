@@ -302,6 +302,20 @@ const dbInit = {
 					)
 				`),
 				c.env.db.prepare(`
+					CREATE TABLE IF NOT EXISTS scheduled_send (
+						schedule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+						user_id INTEGER NOT NULL,
+						account_id INTEGER NOT NULL DEFAULT 0,
+						subject TEXT NOT NULL DEFAULT '',
+						receive_email TEXT NOT NULL DEFAULT '[]',
+						data TEXT NOT NULL DEFAULT '{}',
+						send_at TEXT NOT NULL,
+						status INTEGER NOT NULL DEFAULT 0,
+						error TEXT NOT NULL DEFAULT '',
+						create_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+					)
+				`),
+				c.env.db.prepare(`
 					CREATE TABLE IF NOT EXISTS attachments (
 						att_id INTEGER PRIMARY KEY AUTOINCREMENT,
 						user_id INTEGER NOT NULL,
