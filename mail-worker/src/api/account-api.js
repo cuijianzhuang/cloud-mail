@@ -1,5 +1,6 @@
 import app from '../hono/hono';
 import accountService from '../service/account-service';
+import signatureService from '../service/signature-service';
 import result from '../model/result';
 import userContext from '../security/user-context';
 
@@ -31,4 +32,14 @@ app.put('/account/setAllReceive', async (c) => {
 app.put('/account/setAsTop', async (c) => {
 	await accountService.setAsTop(c, await c.req.json(), userContext.getUserId(c));
 	return c.json(result.ok());
+});
+
+app.get('/account/signature', async (c) => {
+	const data = await signatureService.get(c, c.req.query(), userContext.getUserId(c));
+	return c.json(result.ok(data));
+});
+
+app.put('/account/signature', async (c) => {
+	const data = await signatureService.save(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok(data));
 });

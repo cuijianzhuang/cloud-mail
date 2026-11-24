@@ -23,6 +23,7 @@ import domainUtils from '../utils/domain-uitls';
 import account from "../entity/account";
 import { att } from '../entity/att';
 import telegramService from './telegram-service';
+import signatureService from './signature-service';
 import constant from '../const/constant';
 import webhookService from './webhook-service';
 import forwardMime from '../utils/forward-mime';
@@ -475,6 +476,17 @@ const emailService = {
 		bccEmail = bccEmail.filter(address => !takenAddress.has(address.toLowerCase()));
 
 		const { resendTokens, r2Domain, send, domainList } = await settingService.query(c);
+
+		// 附带签名（默认开，写信页可关）：纯文本签名转 HTML 追加到正文末尾，已含签名时不重复加
+		if (params.useSignature !== false) {
+			const signature = await signatureService.getByAccountId(c, accountId);
+			const firstLine = (signature || '').split('\n').find(line => line.trim());
+			if (signature && firstLine && !(text || '').includes(firstLine)) {
+				const esc = signature.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+				content = (content || '') + `<br><br>--<br>${esc}`;
+				text = (text || '') + `\n\n--\n${signature}`;
+			}
+		}
 
 		// 引用正文里的 /proxy?url= 还原成原始外链再发。
 		content = proxyService.restoreHtml(content);

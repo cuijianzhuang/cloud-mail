@@ -122,6 +122,7 @@
             </div>
           </div>
           <div>
+            <el-checkbox v-if="hasSignature" v-model="form.useSignature" style="margin-right: 12px">{{$t('useSignature')}}</el-checkbox>
             <el-dropdown split-button type="primary" trigger="click" @click="sendEmail" @command="selectSendMode">
               {{ sendButtonLabel }}
               <template #dropdown>
@@ -178,6 +179,7 @@ import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} fro
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend, emailRecipients} from "@/request/email.js";
+import {accountSignature} from "@/request/account.js";
 import {scheduledCreate} from "@/request/scheduled.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useAccountStore} from "@/store/account.js";
@@ -246,6 +248,7 @@ const form = reactive({
   manyType: 'together',
   text: '',
   emailId: 0,
+  useSignature: true,
   attachments: [],
   draftId: null,
 })
@@ -748,6 +751,8 @@ function formatImage(content) {
   return content.replace(/{{domain}}/g, toOssDomain(domain) + '/');
 }
 
+const hasSignature = ref(false)
+
 function open() {
   if (!accountStore.currentAccount.email) {
     form.sendEmail = userStore.user.email;
@@ -760,6 +765,10 @@ function open() {
   }
   show.value = true;
   editor.value.focus()
+  hasSignature.value = false
+  accountSignature(form.accountId).then(data => {
+    hasSignature.value = !!(data.signature && data.signature.trim())
+  }).catch(() => {})
 }
 
 function openDraft(draft) {

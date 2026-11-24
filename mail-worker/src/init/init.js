@@ -317,9 +317,12 @@ const dbInit = {
 					)
 				`),
 				c.env.db.prepare(`
+					CREATE TABLE IF NOT EXISTS account_signature (
+						account_id INTEGER PRIMARY KEY,
+						user_id INTEGER NOT NULL,
+						signature TEXT NOT NULL DEFAULT '',
 					CREATE TABLE IF NOT EXISTS scheduled_send (
 						schedule_id INTEGER PRIMARY KEY AUTOINCREMENT,
-						user_id INTEGER NOT NULL,
 					CREATE TABLE IF NOT EXISTS mail_rule (
 						rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
 						name TEXT NOT NULL DEFAULT '',
