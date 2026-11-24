@@ -25,3 +25,7 @@ export function emailSend(form,progress) {
         noMsg: true
     })
 }
+
+export function emailRecipients() {
+    return http.get('/email/recipients')
+}
