@@ -11,6 +11,7 @@
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
       <el-button size="small" :loading="aiLoading === 'summary'" @click="doSummary">{{$t('aiSummary')}}</el-button>
       <el-button size="small" :loading="aiLoading === 'translate'" @click="doTranslate">{{$t('aiTranslate')}}</el-button>
+      <Icon class="icon" @click="handleExport" icon="material-symbols-light:download" width="20" height="20" :title="$t('exportEml')"/>
     </div>
     <div></div>
     <el-scrollbar class="scrollbar">
@@ -94,6 +95,7 @@ import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailRead} from "@/request/email.js";
 import {aiSummarize, aiTranslate} from "@/request/ai.js";
+import {exportEml} from "@/request/export.js";
 import {Icon} from "@iconify/vue";
 import {useEmailStore} from "@/store/email.js";
 import {useAccountStore} from "@/store/account.js";
@@ -326,6 +328,9 @@ async function doTranslate() {
     aiLoading.value = ''
   }
 }
+const handleExport = async () => {
+  await exportEml(email.value.emailId, email.value.subject);
+};
 
 const handleDelete = () => {
   ElMessageBox.confirm(t('delEmailConfirm'), {

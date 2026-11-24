@@ -34,7 +34,7 @@ not_found_handling = "single-page-application"
 run_worker_first = [ "/api/*", "/oss/*", "/static/*", "/attachments/*", "/proxy", "/realtime" ]
 
 [triggers]
-crons = ["0 * * * *"]	# Hourly cron; resetDaySendCount only runs at UTC 0
+crons = ["*/5 * * * *", "0 * * * *"]	# Hourly cron; resetDaySendCount only runs at UTC 0
 
 [[durable_objects.bindings]]
 name = "ws"

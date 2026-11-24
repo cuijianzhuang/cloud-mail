@@ -1,4 +1,6 @@
 <template>
+  <div class="send-wrap">
+  <ScheduledPending/>
   <emailScroll ref="sendScroll"
                :cancel-success="cancelStar"
                :star-success="addStar"
@@ -13,6 +15,7 @@
                :type="'send'"
   >
   </emailScroll>
+  </div>
 </template>
 
 <script setup>
@@ -20,6 +23,7 @@ import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
 import {useSendStore} from "@/store/send.js";
 import emailScroll from "@/components/email-scroll/index.vue"
+import ScheduledPending from "@/components/scheduled-pending/index.vue";
 import {emailList, emailDelete} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, onMounted, ref, watch} from "vue";
@@ -82,5 +86,13 @@ function getEmailList(emailId, size) {
 <style scoped>
 .icon {
   cursor: pointer;
+}
+</style>
+
+<style scoped>
+.send-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 </style>
