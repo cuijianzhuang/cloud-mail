@@ -51,6 +51,45 @@ const aiService = {
 		}
 	},
 
+	async runText(c, system, user, maxTokens = 512) {
+		const result = await c.env.ai.run(c.env.ai_model || '@cf/meta/llama-3.1-8b-instruct-fast', {
+			messages: [
+				{ role: 'system', content: system },
+				{ role: 'user', content: user }
+			],
+			temperature: 0.2,
+			max_tokens: maxTokens
+		});
+		return typeof result === 'string' ? result : result?.response || '';
+	},
+
+	mailBody(emailRow) {
+		const text = emailUtils.formatText(emailRow.text || '');
+		const htmlText = emailUtils.htmlToText(emailRow.content || '');
+		return (text || htmlText).slice(0, 8000);
+	},
+
+	async summarize(c, emailRow, lang) {
+		const body = this.mailBody(emailRow);
+		if (!body) return { summary: '' };
+		const zh = lang !== 'en';
+		const summary = await this.runText(c,
+			zh ? '你是邮件助手。用简体中文把邮件总结成 3-5 条要点，每条一行、以「- 」开头，只输出要点本身，不要解释。'
+				: 'You are a mail assistant. Summarize the email in 3-5 bullet points, one per line starting with "- ". Output only the bullets.',
+			`Subject: ${emailRow.subject || ''}\n\n${body}`, 400);
+		return { summary: summary.trim() };
+	},
+
+	async translate(c, emailRow, target) {
+		const body = this.mailBody(emailRow);
+		if (!body) return { translation: '' };
+		const targetName = target === 'en' ? 'English' : '简体中文';
+		const translation = await this.runText(c,
+			`You are a translator. Translate the email into ${targetName}. Output only the translation, keep the paragraph structure.`,
+			body.slice(0, 6000), 1200);
+		return { translation: translation.trim() };
+	},
+
 	shouldExtractCode(aiCode, aiCodeFilterStr, email) {
 		if (aiCode !== settingConst.aiCode.OPEN) {
 			return false;

@@ -9,6 +9,8 @@
       </span>
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="fluent-mdl2:reply" width="19" height="19" />
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <el-button size="small" :loading="aiLoading === 'summary'" @click="doSummary">{{$t('aiSummary')}}</el-button>
+      <el-button size="small" :loading="aiLoading === 'translate'" @click="doTranslate">{{$t('aiTranslate')}}</el-button>
       <Icon class="icon" @click="handleExport" icon="material-symbols-light:download" width="20" height="20" :title="$t('exportEml')"/>
     </div>
     <div></div>
@@ -42,6 +44,10 @@
             <el-alert v-if="email.status === 3" :closable="false" :title="toMessage(email.message)" class="email-msg" type="error" show-icon />
             <el-alert v-if="email.status === 4" :closable="false" :title="$t('complained')" class="email-msg" type="warning" show-icon />
             <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')" class="email-msg" type="warning" show-icon />
+          </div>
+          <div v-if="aiPanel" class="ai-panel">
+            <div class="ai-panel-title">{{ aiPanelTitle }}</div>
+            <pre class="ai-panel-body">{{ aiPanel }}</pre>
           </div>
           <el-scrollbar class="htm-scrollbar" :class="!email.attList?.length ? 'bottom-distance' : ''">
             <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
@@ -88,6 +94,7 @@ import {computed, reactive, ref, watch, onMounted, onUnmounted, nextTick} from "
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailRead} from "@/request/email.js";
+import {aiSummarize, aiTranslate} from "@/request/ai.js";
 import {exportEml} from "@/request/export.js";
 import {Icon} from "@iconify/vue";
 import {useEmailStore} from "@/store/email.js";
@@ -295,6 +302,32 @@ const handleBack = () => {
   router.back()
 }
 
+const aiLoading = ref('')
+const aiPanel = ref('')
+const aiPanelTitle = ref('')
+
+async function doSummary() {
+  aiLoading.value = 'summary'
+  try {
+    const data = await aiSummarize(email.value.emailId, settingStore.lang)
+    aiPanelTitle.value = t('aiSummary')
+    aiPanel.value = data.summary || ''
+  } finally {
+    aiLoading.value = ''
+  }
+}
+
+async function doTranslate() {
+  aiLoading.value = 'translate'
+  try {
+    const target = settingStore.lang === 'en' ? 'en' : 'zh'
+    const data = await aiTranslate(email.value.emailId, target)
+    aiPanelTitle.value = t('aiTranslate')
+    aiPanel.value = data.translation || ''
+  } finally {
+    aiLoading.value = ''
+  }
+}
 const handleExport = async () => {
   await exportEml(email.value.emailId, email.value.subject);
 };
@@ -566,4 +599,24 @@ const handleDelete = () => {
 }
 
 
+</style>
+
+<style scoped>
+.ai-panel {
+  margin: 10px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: var(--el-fill-color-lighter);
+}
+.ai-panel-title {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.ai-panel-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+}
 </style>
