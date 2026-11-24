@@ -29,6 +29,8 @@ const en = {
     save: 'Save',
     profile: 'Account and password',
     accountBind: 'Linked Accounts',
+    exportEml: 'Export .eml',
+    exportMailbox: 'Export mailbox',
     bind: 'Link',
     unbind: 'Unlink',
     notBind: 'Not linked',

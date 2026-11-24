@@ -65,6 +65,7 @@ const en = {
 	noOsUpBack: 'Cannot upload background: object storage not configured',
 	noOsDomainUpBack: 'Cannot upload background: object storage domain not configured',
 	starNotExistEmail: 'Starred email does not exist',
+	exportNotExistEmail: 'The email to export does not exist',
 	emptyBotToken: 'Please verify that you are human',
 	botVerifyFail: 'Bot verification failed, please try again',
 	authExpired: 'Authentication has expired. Please sign in again',
