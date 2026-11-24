@@ -46,10 +46,11 @@ export default {
 	},
 	email: email,
 	async scheduled(c, env, ctx) {
-		// 定时发送每 5 分钟扫一次；其余清理任务只在整点 cron 跑
+		// 单个 */5 触发器（免费版账户 cron 总数上限 5，不能再加第二个）：
+		// 定时发送每次都扫；其余清理任务只在整点那一次（UTC 分钟为 0）跑
 		await scheduledSendService.dispatch({ env });
 
-		if (c.cron !== '0 * * * *') {
+		if (new Date(c.scheduledTime).getUTCMinutes() !== 0) {
 			return;
 		}
 
