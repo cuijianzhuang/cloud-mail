@@ -302,6 +302,22 @@ const dbInit = {
 					)
 				`),
 				c.env.db.prepare(`
+					CREATE TABLE IF NOT EXISTS mail_rule (
+						rule_id INTEGER PRIMARY KEY AUTOINCREMENT,
+						user_id INTEGER NOT NULL,
+						name TEXT NOT NULL DEFAULT '',
+						from_match TEXT NOT NULL DEFAULT '',
+						subject_match TEXT NOT NULL DEFAULT '',
+						content_match TEXT NOT NULL DEFAULT '',
+						action_star INTEGER NOT NULL DEFAULT 0,
+						action_read INTEGER NOT NULL DEFAULT 0,
+						action_delete INTEGER NOT NULL DEFAULT 0,
+						forward_to TEXT NOT NULL DEFAULT '',
+						enabled INTEGER NOT NULL DEFAULT 1,
+						create_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+					)
+				`),
+				c.env.db.prepare(`
 					CREATE TABLE IF NOT EXISTS attachments (
 						att_id INTEGER PRIMARY KEY AUTOINCREMENT,
 						user_id INTEGER NOT NULL,
