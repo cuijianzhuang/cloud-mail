@@ -177,7 +177,7 @@ import tinyEditor from '@/components/tiny-editor/index.vue'
 import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
-import {emailSend} from "@/request/email.js";
+import {emailSend, emailRecipients} from "@/request/email.js";
 import {scheduledCreate} from "@/request/scheduled.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useAccountStore} from "@/store/account.js";
@@ -190,7 +190,7 @@ import {formatDetailDate} from "@/utils/day.js";
 import {useSettingStore} from "@/store/setting.js";
 import {userDraftStore} from "@/store/draft.js";
 import {useWriterStore} from "@/store/writer.js";
-import db from "@/db/db.js";
+import {draftSave} from "@/request/draft.js";
 import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
@@ -257,7 +257,18 @@ const suggestListMap = { receive: selectRecipientList, cc: ccSuggestList, bcc: b
 const suggestSelectMap = { receive: mySelect, cc: ccSelectRef, bcc: bccSelectRef }
 const suggestFieldMap = { receive: 'receiveEmail', cc: 'ccEmail', bcc: 'bccEmail' }
 
-const contacts = computed(() => writerStore.sendRecipientRecord.map(item => ({email: item})))
+const allContactEmails = computed(() => {
+  const seen = new Set()
+  const list = []
+  for (const item of [...writerStore.sendRecipientRecord, ...writerStore.serverContacts]) {
+    const key = String(item).toLowerCase()
+    if (seen.has(key) || writerStore.hiddenContacts.includes(key)) continue
+    seen.add(key)
+    list.push(item)
+  }
+  return list
+})
+const contacts = computed(() => allContactEmails.value.map(item => ({email: item})))
 const togetherSendLabel = computed(() => {
   if (form.sendType === 'reply') return t('reply')
   if (form.sendType === 'forward') return t('forward')
@@ -353,6 +364,7 @@ function deleteContact() {
     const key = targetAddressKey()
     form[key] = form[key].filter(item => !contactList.includes(item));
     writerStore.sendRecipientRecord = writerStore.sendRecipientRecord.filter(item => !contactList.includes(item));
+    writerStore.hiddenContacts = [...new Set([...writerStore.hiddenContacts, ...contactList.map(item => String(item).toLowerCase())])];
   })
 }
 
@@ -396,7 +408,7 @@ function suggestChange(target, value) {
 
 function updateSuggest(target, value) {
   const field = suggestFieldMap[target]
-  const list = writerStore.sendRecipientRecord.filter(item => value && !form[field].includes(item) && item.startsWith(value)).slice(0, 10)
+  const list = allContactEmails.value.filter(item => value && !form[field].includes(item) && item.startsWith(value)).slice(0, 10)
   suggestListMap[target].value = list
 
   if (!suggestOpen[target] && list.length > 0) {
@@ -772,6 +784,9 @@ const handleKeyDown = (event) => {
 };
 
 onMounted(() => {
+  emailRecipients().then(data => {
+    writerStore.serverContacts = data.list || []
+  }).catch(() => {})
   window.addEventListener('keydown', handleKeyDown);
 });
 
@@ -822,10 +837,13 @@ function close() {
   }).then(async () => {
     const formData = {...toRaw(form)};
     delete formData.draftId
-    delete formData.attachments
     formData.createTime = dayjs().utc().format('YYYY-MM-DD HH:mm:ss');
-    const draftId = await db.value.draft.add({...formData})
-    db.value.att.add({draftId, attachments: toRaw(form.attachments)})
+    await draftSave({
+      accountId: formData.accountId,
+      subject: formData.subject,
+      receiveEmail: formData.receiveEmail,
+      data: formData
+    })
     draftStore.refreshList++
     show.value = false
     await nextTick(() => {

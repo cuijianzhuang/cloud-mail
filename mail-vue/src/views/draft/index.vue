@@ -29,7 +29,7 @@ import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, ref, watch, toRaw} from "vue";
 import {useUiStore} from "@/store/ui.js";
 import {userDraftStore} from "@/store/draft.js";
-import db from "@/db/db.js"
+import {draftDelete, draftDetail, draftList, draftSave} from "@/request/draft.js";
 
 defineOptions({
   name: 'draft'
@@ -43,20 +43,24 @@ watch(() => draftStore.setDraft, async () => {
 
   const draft = toRaw(draftStore.setDraft)
   const draftId = draft.draftId
-  const attachments = toRaw(draftStore.setDraft.attachments)
 
-  delete draft.draftId
-  delete draft.attachments
+  if (!draftId) {
+    return;
+  }
 
   if (!draft.content && !draft.subject && !(draft.receiveEmail.length > 0)) {
-    await db.value.draft.delete(draftId);
-    await db.value.att.delete(draftId);
+    await draftDelete([draftId]);
     draftStore.refreshList++
     return;
   }
 
-  await db.value.draft.update(draftId, draft);
-  await db.value.att.update(draftId, {attachments: attachments});
+  await draftSave({
+    draftId,
+    accountId: draft.accountId,
+    subject: draft.subject,
+    receiveEmail: draft.receiveEmail,
+    data: draft
+  });
   draftStore.refreshList++
 }, {
   deep: true
@@ -70,22 +74,17 @@ watch(() => draftStore.refreshList, async () => {
 })
 
 function getEmailList() {
-  return new Promise((resolve, reject) => {
-    db.value.draft.orderBy('createTime').reverse().toArray().then(list => {
-      resolve({list})
-    })
-  })
+  return draftList();
 }
 
 async function deleteDraft(draftIds) {
-  await db.value.draft.bulkDelete(draftIds);
+  await draftDelete(draftIds);
   draftStore.refreshList++
 }
 
 async function jumpContent(email) {
-  const att = await db.value.att.get(email.draftId)
-  email.attachments = att.attachments
-  uiStore.writerRef.openDraft(email);
+  const draft = await draftDetail(email.draftId)
+  uiStore.writerRef.openDraft(draft);
 }
 
 </script>
