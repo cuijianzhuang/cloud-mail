@@ -563,7 +563,8 @@ const emailService = {
 		}
 
 		const domain = emailUtils.getDomain(accountRow.email);
-		const resendToken = resendTokens[domain];
+		// 域名专属 token 优先，没有时用 '*' 共享 token（一个 Resend 账号的 key 可发其名下全部已验证域名）
+		const resendToken = resendTokens[domain] || resendTokens['*'];
 		// 发送通道单选（setting.sendProvider）：选 resend 时绝不走 CF；
 		// 选 cloudflare 时 CF 可用则走 CF，CF 绑定缺失才回退 Resend（兼容存量纯 Resend 部署）
 		const cfAvailable = !!c.env.email;
