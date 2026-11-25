@@ -744,8 +744,9 @@ Authorization: &lt;secret&gt;</pre>
                            :show-overflow-tooltip="true"/>
           <el-table-column :width="tokenColumnWidth" property="value" label="Token"
                            :show-overflow-tooltip="true"/>
-          <el-table-column :label="$t('action')" width="80" fixed="right">
+          <el-table-column :label="$t('action')" width="150" fixed="right">
             <template #default="{row}">
+              <el-button type="primary" size="small" @click="openResendEdit(row)">{{ $t('edit') }}</el-button>
               <el-button type="danger" size="small" @click="deleteResendToken(row)">{{ $t('delete') }}</el-button>
             </template>
           </el-table-column>
@@ -1666,6 +1667,13 @@ function openBlackListForm() {
 
 function openAiCodeFilter() {
   aiCodeFilterShow.value = true
+}
+
+function openResendEdit(row) {
+  // token 在列表里是脱敏值，编辑即为该行域名预选好、填入新 token 覆盖保存
+  resendTokenForm.domains = [row.key === '*' ? '*' : '@' + row.key]
+  resendTokenForm.token = ''
+  resendTokenFormShow.value = true
 }
 
 async function deleteResendToken(row) {
