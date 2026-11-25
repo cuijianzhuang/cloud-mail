@@ -26,9 +26,24 @@ const dbInit = {
 		await this.v3_6DB(c);
 		await this.v3_7DB(c);
 		await this.v3_8DB(c);
+		await this.v3_9DB(c);
 		await userService.initAdmin(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v3_9DB(c) {
+		const alters = [
+			`ALTER TABLE setting ADD COLUMN resend_webhook_secret TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE scheduled_send ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;`,
+		];
+		for (const sqlText of alters) {
+			try {
+				await c.env.db.prepare(sqlText).run();
+			} catch (e) {
+				console.warn(`sql skip:${e.message}`);
+			}
+		}
 	},
 
 	async v3_8DB(c) {

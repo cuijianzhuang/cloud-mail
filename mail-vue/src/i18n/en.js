@@ -31,6 +31,8 @@ const en = {
     accountBind: 'Linked Accounts',
     sendChannel: 'Send Channel',
     resendSharedDomain: 'All domains (shared)',
+    resendWebhookSecret: 'Resend Webhook Secret',
+    resendWebhookSecretDesc: 'Signing secret (whsec_...) from the Resend webhook settings, used to verify callbacks',
     notEnabled: 'Not enabled',
     aiSummary: 'AI Summary',
     aiTranslate: 'Translate',

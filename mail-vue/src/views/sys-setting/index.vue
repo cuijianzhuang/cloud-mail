@@ -206,6 +206,16 @@
                 </div>
               </div>
               <div class="setting-item">
+                <div><span>{{ $t('resendWebhookSecret') }}</span></div>
+                <div>
+                  <span style="margin-right: 8px">{{ setting.resendWebhookSecret ? $t('enabled') : $t('notEnabled') }}</span>
+                  <el-button class="opt-button" style="margin-top: 0" @click="webhookSecretShow = true" size="small"
+                             type="primary">
+                    <Icon icon="fluent:settings-48-regular" width="16" height="16"/>
+                  </el-button>
+                </div>
+              </div>
+              <div class="setting-item">
                 <div><span>{{ $t('blackList') }}</span></div>
                 <div>
                   <el-button class="opt-button" style="margin-top: 0" @click="openBlackListForm" size="small"
@@ -521,6 +531,12 @@
           </el-select>
           <el-input type="text" :placeholder="$t('addResendTokenDesc')" v-model="resendTokenForm.token" @keyup.enter="saveResendToken"/>
           <el-button type="primary" :loading="settingLoading" @click="saveResendToken">{{ $t('save') }}</el-button>
+        </form>
+      </el-dialog>
+      <el-dialog v-model="webhookSecretShow" :title="$t('resendWebhookSecret')" width="340" @closed="webhookSecretValue = ''">
+        <form @submit.prevent>
+          <el-input type="text" :placeholder="$t('resendWebhookSecretDesc')" v-model="webhookSecretValue" @keyup.enter="saveWebhookSecret"/>
+          <el-button type="primary" :loading="settingLoading" @click="saveWebhookSecret">{{ $t('save') }}</el-button>
         </form>
       </el-dialog>
       <el-dialog v-model="turnstileShow" :title="$t('addTurnstileSecret')" width="340"
@@ -978,6 +994,14 @@ const accountStore = useAccountStore();
 const userStore = useUserStore();
 const editTitleShow = ref(false)
 const resendTokenFormShow = ref(false)
+const webhookSecretShow = ref(false)
+const webhookSecretValue = ref('')
+
+function saveWebhookSecret() {
+  if (!webhookSecretValue.value) return
+  editSetting({resendWebhookSecret: webhookSecretValue.value})
+  webhookSecretShow.value = false
+}
 const blackFormShow = ref(false)
 const autoCleanShow = ref(false)
 const aiCodeFilterShow = ref(false)
@@ -1700,6 +1724,7 @@ function saveResendToken() {
 function backupSetting() {
   const settingForm = {...setting.value}
   delete settingForm.resendTokens
+  delete settingForm.resendWebhookSecret
   delete settingForm.siteKey
   delete settingForm.secretKey
   backup = JSON.stringify(setting.value)
@@ -1725,6 +1750,7 @@ function change(e) {
   delete settingForm.s3SecretKey
   delete settingForm.tgBotToken
   delete settingForm.resendTokens
+  delete settingForm.resendWebhookSecret
   editSetting(settingForm, false)
 }
 

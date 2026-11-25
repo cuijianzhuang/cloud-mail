@@ -31,6 +31,8 @@ const zh = {
     accountBind: '账号绑定',
     sendChannel: '发送通道',
     resendSharedDomain: '全部域名（共享）',
+    resendWebhookSecret: 'Resend Webhook 密钥',
+    resendWebhookSecretDesc: 'Resend 控制台 Webhook 的 Signing Secret（whsec_ 开头），用于回调验签',
     notEnabled: '未启用',
     aiSummary: 'AI 摘要',
     aiTranslate: '翻译',
