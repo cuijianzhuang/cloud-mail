@@ -30,6 +30,7 @@ const en = {
     profile: 'Account and password',
     accountBind: 'Linked Accounts',
     sendChannel: 'Send Channel',
+    resendSharedDomain: 'All domains (shared)',
     notEnabled: 'Not enabled',
     aiSummary: 'AI Summary',
     aiTranslate: 'Translate',

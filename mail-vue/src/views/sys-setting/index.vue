@@ -511,6 +511,7 @@
       <el-dialog v-model="resendTokenFormShow" :title="$t('resendToken')" width="340" @closed="cleanResendTokenForm">
         <form @submit.prevent>
           <el-select style="margin-bottom: 15px" v-model="resendTokenForm.domain" placeholder="Select">
+            <el-option :label="$t('resendSharedDomain')" value="*"/>
             <el-option
                 v-for="item in settingStore.domainList"
                 :key="item"
@@ -739,13 +740,13 @@ Authorization: &lt;secret&gt;</pre>
       </el-dialog>
       <el-dialog class="resend-table" v-model="showResendList" :title="$t('resendTokenList')">
         <el-table :data="resendList">
-          <el-table-column :min-width="emailColumnWidth" property="key" :label="$t('domain')"
+          <el-table-column :min-width="emailColumnWidth" property="label" :label="$t('domain')"
                            :show-overflow-tooltip="true"/>
           <el-table-column :width="tokenColumnWidth" property="value" label="Token"
                            :show-overflow-tooltip="true"/>
           <el-table-column :label="$t('action')" width="80" fixed="right">
             <template #default="{row}">
-              <el-button type="danger" size="small" @click="deleteResendToken(row.key)">{{ $t('delete') }}</el-button>
+              <el-button type="danger" size="small" @click="deleteResendToken(row)">{{ $t('delete') }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -1167,13 +1168,14 @@ const resendList = computed(() => {
   let list = Object.keys(setting.value.resendTokens).map(key => {
     return {
       key: key,
+      label: key === '*' ? t('resendSharedDomain') : key,
       value: setting.value.resendTokens[key]
     };
   })
 
   if (list.length > 0) {
 
-    const key = list.reduce((a, b) => compareByLengthAndUpperCase(a, b, 'key')).key;
+    const key = list.reduce((a, b) => compareByLengthAndUpperCase(a, b, 'label')).label;
     emailColumnWidth.value = getTextWidth(key) + 30;
 
     const value = list.reduce((a, b) => compareByLengthAndUpperCase(a, b, 'value')).value;
@@ -1666,10 +1668,10 @@ function openAiCodeFilter() {
   aiCodeFilterShow.value = true
 }
 
-async function deleteResendToken(domain) {
-  await ElMessageBox.confirm(t('delConfirm', {msg: domain}), {type: 'warning'});
+async function deleteResendToken(row) {
+  await ElMessageBox.confirm(t('delConfirm', {msg: row.label}), {type: 'warning'});
   const settingForm = {resendTokens: {}}
-  settingForm.resendTokens[domain] = ''
+  settingForm.resendTokens[row.key] = ''
   editSetting(settingForm)
 }
 
@@ -1677,7 +1679,7 @@ function saveResendToken() {
   const settingForm = {
     resendTokens: {}
   }
-  const domain = resendTokenForm.domain.slice(1)
+  const domain = resendTokenForm.domain === '*' ? '*' : resendTokenForm.domain.slice(1)
   settingForm.resendTokens[domain] = resendTokenForm.token
   editSetting(settingForm)
 }

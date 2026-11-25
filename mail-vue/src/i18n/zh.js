@@ -30,6 +30,7 @@ const zh = {
     profile: '账户与密码',
     accountBind: '账号绑定',
     sendChannel: '发送通道',
+    resendSharedDomain: '全部域名（共享）',
     notEnabled: '未启用',
     aiSummary: 'AI 摘要',
     aiTranslate: '翻译',
