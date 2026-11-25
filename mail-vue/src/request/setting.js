@@ -1,5 +1,9 @@
 import http from '@/axios/index.js';
 
+export function resendVerify(params) {
+    return http.post('/setting/resend-verify', params)
+}
+
 export function settingSet(setting) {
     return http.put('/setting/set', setting)
 }

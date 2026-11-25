@@ -7,6 +7,7 @@ import emailService from './email-service';
 import { t } from '../i18n/i18n';
 
 const STATUS = { PENDING: 0, SENT: 1, FAILED: 2, CANCELLED: 3 };
+const MAX_ATTEMPTS = 3;
 
 const scheduledSendService = {
 
@@ -37,6 +38,7 @@ const scheduledSendService = {
 			sendAt: scheduledSend.sendAt,
 			status: scheduledSend.status,
 			error: scheduledSend.error,
+			attempts: scheduledSend.attempts,
 			createTime: scheduledSend.createTime,
 		}).from(scheduledSend)
 			.where(and(eq(scheduledSend.userId, userId), eq(scheduledSend.status, STATUS.PENDING)))
@@ -71,8 +73,17 @@ const scheduledSendService = {
 					.where(eq(scheduledSend.scheduleId, row.scheduleId)).run();
 			} catch (e) {
 				console.error('定时发送失败: ', e);
-				await orm(c).update(scheduledSend).set({ status: STATUS.FAILED, error: String(e?.message || e).slice(0, 500) })
-					.where(eq(scheduledSend.scheduleId, row.scheduleId)).run();
+				const attempts = (row.attempts || 0) + 1;
+				const message = String(e?.message || e).slice(0, 500);
+				if (attempts < MAX_ATTEMPTS) {
+					// 未达重试上限：保持待发送，sendAt 顺延（5 分钟、10 分钟递增），等下个 cron 周期重试
+					const retryAt = dayjs().utc().add(5 * 2 ** (attempts - 1), 'minute').format('YYYY-MM-DD HH:mm:ss');
+					await orm(c).update(scheduledSend).set({ attempts, error: message, sendAt: retryAt })
+						.where(eq(scheduledSend.scheduleId, row.scheduleId)).run();
+				} else {
+					await orm(c).update(scheduledSend).set({ status: STATUS.FAILED, attempts, error: message })
+						.where(eq(scheduledSend.scheduleId, row.scheduleId)).run();
+				}
 			}
 		}
 		return rows.length;

@@ -530,6 +530,7 @@
             />
           </el-select>
           <el-input type="text" :placeholder="$t('addResendTokenDesc')" v-model="resendTokenForm.token" @keyup.enter="saveResendToken"/>
+          <el-button :loading="verifyLoading" @click="verifyTypedToken">{{ $t('verifyToken') }}</el-button>
           <el-button type="primary" :loading="settingLoading" @click="saveResendToken">{{ $t('save') }}</el-button>
         </form>
       </el-dialog>
@@ -760,13 +761,28 @@ Authorization: &lt;secret&gt;</pre>
                            :show-overflow-tooltip="true"/>
           <el-table-column :width="tokenColumnWidth" property="value" label="Token"
                            :show-overflow-tooltip="true"/>
-          <el-table-column :label="$t('action')" width="150" fixed="right">
+          <el-table-column :label="$t('action')" width="230" fixed="right">
             <template #default="{row}">
+              <el-button size="small" :loading="verifyLoading" @click="verifyStoredToken(row)">{{ $t('verifyToken') }}</el-button>
               <el-button type="primary" size="small" @click="openResendEdit(row)">{{ $t('edit') }}</el-button>
               <el-button type="danger" size="small" @click="deleteResendToken(row)">{{ $t('delete') }}</el-button>
             </template>
           </el-table-column>
         </el-table>
+      </el-dialog>
+      <el-dialog v-model="verifyResultShow" :title="$t('verifyResult')" width="420">
+        <div v-if="verifyResult && !verifyResult.valid" style="color: var(--el-color-danger)">
+          {{ $t('tokenInvalid') }}<span v-if="verifyResult.error">: {{ verifyResult.error }}</span>
+        </div>
+        <el-table v-else-if="verifyResult" :data="verifyResult.domains || []">
+          <el-table-column property="name" :label="$t('domain')"/>
+          <el-table-column :label="$t('status')" width="130">
+            <template #default="{row}">
+              <el-tag size="small" :type="row.status === 'verified' ? 'success' : (row.status === 'pending' || row.status === 'partially_verified') ? 'warning' : 'danger'">{{ row.status }}</el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+        <div v-if="verifyResult && verifyResult.valid && !(verifyResult.domains || []).length">{{ $t('noDomainsInAccount') }}</div>
       </el-dialog>
       <el-dialog v-model="regVerifyCountShow" :title="$t('rulesVerifyTitle',{count: regVerifyCount})"
                  @closed="regVerifyCount = setting.regVerifyCount">
@@ -962,7 +978,7 @@ Authorization: &lt;secret&gt;</pre>
 
 <script setup>
 import {computed, defineOptions, nextTick, reactive, ref} from "vue";
-import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet} from "@/request/setting.js";
+import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet, resendVerify } from "@/request/setting.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
@@ -994,6 +1010,29 @@ const accountStore = useAccountStore();
 const userStore = useUserStore();
 const editTitleShow = ref(false)
 const resendTokenFormShow = ref(false)
+const verifyLoading = ref(false)
+const verifyResultShow = ref(false)
+const verifyResult = ref(null)
+
+async function runVerify(params) {
+  verifyLoading.value = true
+  try {
+    verifyResult.value = await resendVerify(params)
+    verifyResultShow.value = true
+  } finally {
+    verifyLoading.value = false
+  }
+}
+
+function verifyTypedToken() {
+  if (!resendTokenForm.token) return
+  runVerify({token: resendTokenForm.token})
+}
+
+function verifyStoredToken(row) {
+  runVerify({domainKey: row.key})
+}
+
 const webhookSecretShow = ref(false)
 const webhookSecretValue = ref('')
 
