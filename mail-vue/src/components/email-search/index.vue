@@ -244,6 +244,10 @@ function formatSearchDate(dateValue, endOfDay = false) {
 }
 
 function handleSearch() {
+  const keyword = searchText.value.trim()
+  if (keyword.length > 0 && keyword.length < 3) {
+    ElMessage({message: t('searchMinChars'), type: 'warning', plain: true})
+  }
   props.store.setSearchParams({
     text: searchText.value.trim(),
     type: searchType.value,

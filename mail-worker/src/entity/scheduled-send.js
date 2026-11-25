@@ -13,6 +13,7 @@ export const scheduledSend = sqliteTable('scheduled_send', {
 	// 0 待发送 1 已发送 2 失败 3 已取消
 	status: integer('status').default(0).notNull(),
 	error: text('error').default('').notNull(),
+	attempts: integer('attempts').default(0).notNull(),
 	createTime: text('create_time')
 		.notNull()
 		.default(sql`CURRENT_TIMESTAMP`),

@@ -70,6 +70,7 @@ export const setting = sqliteTable('setting', {
 	webhookStatus: integer('webhook_status').default(1).notNull(),
 	webhookRetry: integer('webhook_retry').default(0).notNull(),
 	webhookSecret: text('webhook_secret').default('').notNull(),
-	sendProvider: text('send_provider').default('cloudflare').notNull()
+	sendProvider: text('send_provider').default('cloudflare').notNull(),
+	resendWebhookSecret: text('resend_webhook_secret').default('').notNull()
 });
 export default setting

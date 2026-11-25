@@ -5,6 +5,7 @@
       <span class="s-subject">{{ item.subject || '(' + $t('noSubject') + ')' }}</span>
       <span class="s-to">{{ item.receiveEmail.join(', ') }}</span>
       <span class="s-time">{{ item.sendAt }} UTC</span>
+      <span v-if="item.attempts > 0" class="s-retry">{{ $t('scheduleRetryHint', {n: item.attempts, error: item.error}) }}</span>
       <el-button link type="danger" @click="cancel(item)">{{$t('cancelSchedule')}}</el-button>
     </div>
   </div>
@@ -55,6 +56,14 @@ onMounted(load);
   font-weight: bold;
   color: var(--primary-text-color);
   max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.s-retry {
+  color: var(--el-color-warning);
+  max-width: 320px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
