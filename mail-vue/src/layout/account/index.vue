@@ -6,7 +6,15 @@
     </div>
     <el-scrollbar class="scrollbar" ref="scrollbarRef">
       <div v-infinite-scroll="getAccountList" :infinite-scroll-distance="600" :infinite-scroll-immediate="false">
-        <el-card class="item" :class="itemBg(item.accountId)" v-for="(item, index) in accounts" :key="item.accountId"
+        <template v-for="group in accountGroups" :key="group.domain">
+          <div class="group-head" @click="toggleGroup(group.domain)">
+            <span class="group-domain">{{ group.domain }}</span>
+            <span class="group-count">{{ group.items.length }}</span>
+            <Icon class="group-arrow" :class="{collapsed: collapsedDomains.has(group.domain)}"
+                  icon="mingcute:down-small-fill" width="18" height="18"/>
+          </div>
+          <template v-if="!collapsedDomains.has(group.domain)">
+        <el-card class="item" :class="itemBg(item.accountId)" v-for="(item, index) in group.items" :key="item.accountId"
                  @click="changeAccount(item)">
           <div class="account">
             {{ item.email }}
@@ -37,6 +45,8 @@
             </div>
           </div>
         </el-card>
+          </template>
+        </template>
 
         <!-- Initial Loading Skeleton -->
         <template v-if="loading">
@@ -170,6 +180,38 @@ const showAdd = ref(false)
 const addLoading = ref(false);
 const domainList = computed(() => settingStore.domainList)
 const accounts = reactive([])
+const collapsedDomains = reactive(new Set())
+// 分页游标独立于展示排序保存（展示按域名/邮箱排序后，数组末尾不再是最后加载项）
+let lastLoadedId = 0
+let lastLoadedSort = null
+
+function domainOf(email) {
+  const at = email.lastIndexOf('@')
+  return at >= 0 ? email.slice(at + 1) : email
+}
+
+// 展示排序：域名 A→Z，同域名内邮箱 A→Z
+function sortAccounts() {
+  accounts.sort((a, b) => {
+    const da = domainOf(a.email), db = domainOf(b.email)
+    if (da !== db) return da < db ? -1 : 1
+    return a.email < b.email ? -1 : a.email > b.email ? 1 : 0
+  })
+}
+
+const accountGroups = computed(() => {
+  const map = new Map()
+  for (const item of accounts) {
+    const d = domainOf(item.email)
+    if (!map.has(d)) map.set(d, [])
+    map.get(d).push(item)
+  }
+  return [...map.entries()].map(([domain, items]) => ({domain, items}))
+})
+
+function toggleGroup(domain) {
+  collapsedDomains.has(domain) ? collapsedDomains.delete(domain) : collapsedDomains.add(domain)
+}
 const noLoading = ref(false)
 const loading = ref(false)
 const followLoading = ref(false);
@@ -207,7 +249,8 @@ if (hasPerm('account:query')) {
 }
 
 watch(() => accountStore.changeUserAccountName, () => {
-  accounts[0].name = accountStore.changeUserAccountName
+  const mine = accounts.find(item => item.accountId === userStore.user.account.accountId)
+  if (mine) mine.name = accountStore.changeUserAccountName
 })
 
 watch(() => settingStore.domainList, (list) => {
@@ -381,6 +424,9 @@ function refresh() {
   noLoading.value = false
   queryParams.accountId = 0
   queryParams.lastSort = null
+  lastLoadedId = 0
+  lastLoadedSort = null
+  collapsedDomains.clear()
   getSkeletonRows();
   scrollbarRef.value.setScrollTop(0)
   accounts.splice(0, accounts.length)
@@ -408,8 +454,11 @@ function setAsTop(account, index) {
       plain: true,
     })
 
-    const [item] = accounts.splice(index, 1);
-    accounts.splice(1, 0, item);
+    // 分组后置顶 = 移到本域名组的第一位
+    const flatIndex = accounts.findIndex(a => a.accountId === account.accountId);
+    const [item] = accounts.splice(flatIndex, 1);
+    const groupStart = accounts.findIndex(a => domainOf(a.email) === domainOf(item.email));
+    accounts.splice(groupStart >= 0 ? groupStart : accounts.length, 0, item);
 
   });
 }
@@ -448,8 +497,8 @@ function getAccountList() {
 
   let start = Date.now();
 
-  const accountId = accounts.length > 0 ? accounts.at(-1).accountId : 0;
-  const lastSort = accounts.length > 0 ? accounts.at(-1).sort : null;
+  const accountId = lastLoadedId;
+  const lastSort = lastLoadedSort;
 
   accountList(accountId, queryParams.size, lastSort).then(async list => {
 
@@ -466,7 +515,13 @@ function getAccountList() {
       accountStore.currentAccount = list[0]
     }
 
+    if (list.length > 0) {
+      lastLoadedId = list.at(-1).accountId
+      lastLoadedSort = list.at(-1).sort
+    }
+
     accounts.push(...list)
+    sortAccounts()
 
     loading.value = false
     followLoading.value = false
@@ -543,6 +598,7 @@ function submit() {
     addLoading.value = false
     addForm.email = ''
     accounts.push(account)
+    sortAccounts()
     verifyToken = ''
     settingStore.settings.addVerifyOpen = account.addVerifyOpen
     ElMessage({
@@ -674,6 +730,43 @@ path[fill="#ffdda1"] {
 
     :deep(.el-card__body) {
       padding: 0;
+    }
+  }
+
+  .group-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px 6px;
+    cursor: pointer;
+    user-select: none;
+
+    .group-domain {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--secondary-text-color);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .group-count {
+      font-size: 11px;
+      color: var(--secondary-text-color);
+      background: var(--el-fill-color-light);
+      border-radius: 8px;
+      padding: 0 6px;
+      line-height: 16px;
+    }
+
+    .group-arrow {
+      margin-left: auto;
+      color: var(--secondary-text-color);
+      transition: transform 0.2s;
+
+      &.collapsed {
+        transform: rotate(-90deg);
+      }
     }
   }
 
