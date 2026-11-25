@@ -6,6 +6,7 @@ export const useUiStore = defineStore('ui', {
         accountShow: false,
         backgroundLoading: true,
         changeNotice: 0,
+        noticeForce: false,
         writerRef: null,
         changePreview: 0,
         previewData: {},
@@ -18,7 +19,8 @@ export const useUiStore = defineStore('ui', {
         }
     }),
     actions: {
-        showNotice() {
+        showNotice(force = false) {
+            this.noticeForce = force
             this.changeNotice ++
         },
         previewNotice(data) {

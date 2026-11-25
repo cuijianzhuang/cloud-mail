@@ -43,16 +43,17 @@ watch(() => uiStore.changeNotice, () => {
     noticeOffset: settings.noticeOffset
   }
 
-  showNotice(data)
+  showNotice(data, uiStore.noticeForce)
 })
 
 watch(() => uiStore.changePreview, () => {
-  showNotice(uiStore.previewData)
+  showNotice(uiStore.previewData, true)
 })
 
-function showNotice(data) {
+function showNotice(data, force = false) {
 
-  if (data.notice === 1) {
+  // notice===1 是「登录弹窗」开关关着：自动弹（登录时）要拦，手动查看/预览是用户明确要看，必须放行
+  if (data.notice === 1 && !force) {
     return;
   }
 

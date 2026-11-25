@@ -1137,7 +1137,7 @@ function getSettings() {
 
 
 function openNoticePopup() {
-  uiStore.showNotice()
+  uiStore.showNotice(true)
 }
 
 function openAddVerifyCount() {
