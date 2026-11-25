@@ -29,6 +29,8 @@ const en = {
     save: 'Save',
     profile: 'Account and password',
     accountBind: 'Linked Accounts',
+    sendChannel: 'Send Channel',
+    notEnabled: 'Not enabled',
     aiSummary: 'AI Summary',
     aiTranslate: 'Translate',
     aiTranslating: 'Translating...',
