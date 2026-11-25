@@ -510,7 +510,7 @@
       </el-dialog>
       <el-dialog v-model="resendTokenFormShow" :title="$t('resendToken')" width="340" @closed="cleanResendTokenForm">
         <form @submit.prevent>
-          <el-select style="margin-bottom: 15px" v-model="resendTokenForm.domain" placeholder="Select">
+          <el-select style="margin-bottom: 15px; width: 100%" multiple v-model="resendTokenForm.domains" placeholder="Select">
             <el-option :label="$t('resendSharedDomain')" value="*"/>
             <el-option
                 v-for="item in settingStore.domainList"
@@ -744,8 +744,9 @@ Authorization: &lt;secret&gt;</pre>
                            :show-overflow-tooltip="true"/>
           <el-table-column :width="tokenColumnWidth" property="value" label="Token"
                            :show-overflow-tooltip="true"/>
-          <el-table-column :label="$t('action')" width="80" fixed="right">
+          <el-table-column :label="$t('action')" width="150" fixed="right">
             <template #default="{row}">
+              <el-button type="primary" size="small" @click="openResendEdit(row)">{{ $t('edit') }}</el-button>
               <el-button type="danger" size="small" @click="deleteResendToken(row)">{{ $t('delete') }}</el-button>
             </template>
           </el-table-column>
@@ -1011,7 +1012,7 @@ const addVerifyCountShow = ref(false)
 const regVerifyCountShow = ref(false)
 const loginVerifyCountShow = ref(false)
 const resendTokenForm = reactive({
-  domain: '',
+  domains: [],
   token: '',
 })
 const turnstileForm = reactive({
@@ -1114,7 +1115,7 @@ function getSettings() {
   settingQuery().then(settingData => {
     setting.value = settingData
     settingStore.domainList = settingData.domainList;
-    resendTokenForm.domain = setting.value.domainList[0]
+    resendTokenForm.domains = [setting.value.domainList[0]]
     loginOpacity.value = setting.value.loginOpacity
     minEmailPrefix.value = setting.value.minEmailPrefix
     firstLoading.value = false
@@ -1668,6 +1669,13 @@ function openAiCodeFilter() {
   aiCodeFilterShow.value = true
 }
 
+function openResendEdit(row) {
+  // token 在列表里是脱敏值，编辑即为该行域名预选好、填入新 token 覆盖保存
+  resendTokenForm.domains = [row.key === '*' ? '*' : '@' + row.key]
+  resendTokenForm.token = ''
+  resendTokenFormShow.value = true
+}
+
 async function deleteResendToken(row) {
   await ElMessageBox.confirm(t('delConfirm', {msg: row.label}), {type: 'warning'});
   const settingForm = {resendTokens: {}}
@@ -1676,11 +1684,16 @@ async function deleteResendToken(row) {
 }
 
 function saveResendToken() {
+  if (!resendTokenForm.domains.length || !resendTokenForm.token) return
   const settingForm = {
     resendTokens: {}
   }
-  const domain = resendTokenForm.domain === '*' ? '*' : resendTokenForm.domain.slice(1)
-  settingForm.resendTokens[domain] = resendTokenForm.token
+  // 选了「全部域名（共享）」就只存 '*'，它已覆盖全部域名
+  const domains = resendTokenForm.domains.includes('*') ? ['*'] : resendTokenForm.domains
+  domains.forEach(item => {
+    const domain = item === '*' ? '*' : item.slice(1)
+    settingForm.resendTokens[domain] = resendTokenForm.token
+  })
   editSetting(settingForm)
 }
 
@@ -1694,6 +1707,7 @@ function backupSetting() {
 
 function cleanResendTokenForm() {
   resendTokenForm.token = ''
+  resendTokenForm.domains = setting.value.domainList?.length ? [setting.value.domainList[0]] : []
 }
 
 function beforeChange() {
