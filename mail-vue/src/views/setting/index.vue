@@ -71,7 +71,7 @@
       <div class="language-row setting-row">
         <div>{{$t('noticeInfo')}}</div>
         <div>
-          <el-button @click="uiStore.showNotice()">{{$t('viewNotice')}}</el-button>
+          <el-button @click="uiStore.showNotice(true)">{{$t('viewNotice')}}</el-button>
         </div>
       </div>
     </div>
