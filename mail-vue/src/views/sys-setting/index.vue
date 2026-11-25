@@ -741,8 +741,13 @@ Authorization: &lt;secret&gt;</pre>
         <el-table :data="resendList">
           <el-table-column :min-width="emailColumnWidth" property="key" :label="$t('domain')"
                            :show-overflow-tooltip="true"/>
-          <el-table-column :width="tokenColumnWidth" property="value" label="Token" fixed="right"
+          <el-table-column :width="tokenColumnWidth" property="value" label="Token"
                            :show-overflow-tooltip="true"/>
+          <el-table-column :label="$t('action')" width="80" fixed="right">
+            <template #default="{row}">
+              <el-button type="danger" size="small" @click="deleteResendToken(row.key)">{{ $t('delete') }}</el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </el-dialog>
       <el-dialog v-model="regVerifyCountShow" :title="$t('rulesVerifyTitle',{count: regVerifyCount})"
@@ -1659,6 +1664,13 @@ function openBlackListForm() {
 
 function openAiCodeFilter() {
   aiCodeFilterShow.value = true
+}
+
+async function deleteResendToken(domain) {
+  await ElMessageBox.confirm(t('delConfirm', {msg: domain}), {type: 'warning'});
+  const settingForm = {resendTokens: {}}
+  settingForm.resendTokens[domain] = ''
+  editSetting(settingForm)
 }
 
 function saveResendToken() {
