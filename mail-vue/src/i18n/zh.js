@@ -29,6 +29,8 @@ const zh = {
     save: '保存',
     profile: '账户与密码',
     accountBind: '账号绑定',
+    sendChannel: '发送通道',
+    notEnabled: '未启用',
     aiSummary: 'AI 摘要',
     aiTranslate: '翻译',
     aiTranslating: '翻译中...',

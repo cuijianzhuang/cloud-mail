@@ -178,11 +178,23 @@
                 </div>
               </div>
               <div class="setting-item">
-                <div><span>{{ setting.hasCfEmail ? $t('cloudflareEmailSending') : $t('resendToken') }}</span></div>
-                <div v-if="setting.hasCfEmail">
-                  <span>{{ $t('enabled') }}</span>
+                <div><span>{{ $t('sendChannel') }}</span></div>
+                <div>
+                  <el-radio-group v-model="setting.sendProvider" @change="change">
+                    <el-radio-button value="cloudflare">Cloudflare</el-radio-button>
+                    <el-radio-button value="resend">Resend</el-radio-button>
+                  </el-radio-group>
                 </div>
-                <div v-else>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('cloudflareEmailSending') }}</span></div>
+                <div>
+                  <span>{{ setting.hasCfEmail ? $t('enabled') : $t('notEnabled') }}</span>
+                </div>
+              </div>
+              <div class="setting-item">
+                <div><span>{{ $t('resendToken') }}</span></div>
+                <div>
                   <el-button class="opt-button" style="margin-top: 0" @click="openResendList" size="small"
                              type="primary">
                     <Icon icon="ic:round-list" width="18" height="18"/>

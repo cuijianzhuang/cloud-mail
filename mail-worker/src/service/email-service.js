@@ -475,7 +475,7 @@ const emailService = {
 		ccEmail.forEach(address => takenAddress.add(address.toLowerCase()));
 		bccEmail = bccEmail.filter(address => !takenAddress.has(address.toLowerCase()));
 
-		const { resendTokens, r2Domain, send, domainList } = await settingService.query(c);
+		const { resendTokens, r2Domain, send, domainList, sendProvider } = await settingService.query(c);
 
 		// 附带签名（默认开，写信页可关）：纯文本签名转 HTML 追加到正文末尾，已含签名时不重复加
 		if (params.useSignature !== false) {
@@ -564,9 +564,12 @@ const emailService = {
 
 		const domain = emailUtils.getDomain(accountRow.email);
 		const resendToken = resendTokens[domain];
-		const useCloudflareEmail = !!c.env.email;
+		// 发送通道单选（setting.sendProvider）：选 resend 时绝不走 CF；
+		// 选 cloudflare 时 CF 可用则走 CF，CF 绑定缺失才回退 Resend（兼容存量纯 Resend 部署）
+		const cfAvailable = !!c.env.email;
+		const useCloudflareEmail = sendProvider === 'resend' ? false : cfAvailable;
 
-		//如果接收方存在站外邮箱，又没有发信服务
+		//如果接收方存在站外邮箱，所选通道又不可用
 		if (!useCloudflareEmail && !resendToken && !allInternal) {
 			throw new BizError(t('noSendProvider'));
 		}
@@ -632,7 +635,7 @@ const emailService = {
 			}
 		};
 
-		// 全部站内收件人走本地投递；存在站外收件人时优先 CF，其次 Resend。
+		// 全部站内收件人走本地投递；站外按所选通道发送（useCloudflareEmail 已按单选口径算好）。
 		let deliveries;
 		if (allInternal) {
 			deliveries = this.sendInternal(c, context);
