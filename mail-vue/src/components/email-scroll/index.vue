@@ -71,6 +71,10 @@
                   <span class="name">
                     <span>
                       <div class="unread" v-if="isMobile && (item.unread === EmailUnreadEnum.UNREAD && showUnread) "/>
+                      <Icon v-if="showUnread" class="read-state-icon"
+                            :icon="item.unread === EmailUnreadEnum.UNREAD ? 'mdi:email' : 'mdi:email-open-outline'"
+                            :color="item.unread === EmailUnreadEnum.UNREAD ? '#409eff' : '#a8abb2'"
+                            width="17" height="17"/>
                       <slot name="name" :email="item"><span v-html="item.nameHtml"></span></slot>
                     </span>
                     <span>
@@ -1165,6 +1169,12 @@ function renderHighlight(value) {
         display: grid;
         gap: 5px;
         grid-template-columns: auto 1fr;
+
+        .read-state-icon {
+          vertical-align: -3px;
+          margin-right: 5px;
+          flex-shrink: 0;
+        }
 
         > span:last-child {
           display: flex;
