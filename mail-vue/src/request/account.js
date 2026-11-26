@@ -23,6 +23,18 @@ export function accountSetAllReceive(accountId) {
 export function accountSetAsTop(accountId) {
     return http.put('/account/setAsTop', {accountId})
 }
+
+export function accountSort(accountIds) {
+    return http.put('/account/sort', {accountIds}, {noMsg: true})
+}
+
+export function accountDomainOrder() {
+    return http.get('/account/domain-order', {noMsg: true})
+}
+
+export function accountSetDomainOrder(domains) {
+    return http.put('/account/domain-order', {domains}, {noMsg: true})
+}
 export function accountSignature(accountId) {
     return http.get('/account/signature', {params: {accountId}})
 }

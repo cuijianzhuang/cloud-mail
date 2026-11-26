@@ -6,8 +6,11 @@
     </div>
     <el-scrollbar class="scrollbar" ref="scrollbarRef">
       <div v-infinite-scroll="getAccountList" :infinite-scroll-distance="600" :infinite-scroll-immediate="false">
-        <template v-for="group in accountGroups" :key="group.domain">
+        <div class="group-block" v-for="group in accountGroups" :key="group.domain">
           <div class="group-head" @click="toggleGroup(group.domain)">
+            <span class="drag-handle" title="拖动排序" @click.stop @pointerdown="startGroupDrag($event, group.domain)">
+              <Icon icon="mdi:drag-vertical" width="16" height="16"/>
+            </span>
             <span class="group-domain">{{ group.domain }}</span>
             <span class="group-count">{{ group.items.length }}</span>
             <Icon class="group-arrow" :class="{collapsed: collapsedDomains.has(group.domain)}"
@@ -17,6 +20,9 @@
         <el-card class="item" :class="itemBg(item.accountId)" v-for="(item, index) in group.items" :key="item.accountId"
                  @click="changeAccount(item)">
           <div class="account">
+            <span class="drag-handle" title="拖动排序" @click.stop @pointerdown="startAccountDrag($event, group.domain, item.accountId)">
+              <Icon icon="mdi:drag-vertical" width="16" height="16"/>
+            </span>
             {{ item.email }}
             <span v-if="unreadStore.byAccount[item.accountId]" class="unread-badge">{{ unreadStore.byAccount[item.accountId] > 99 ? '99+' : unreadStore.byAccount[item.accountId] }}</span>
           </div>
@@ -47,7 +53,7 @@
           </div>
         </el-card>
           </template>
-        </template>
+        </div>
 
         <!-- Initial Loading Skeleton -->
         <template v-if="loading">
@@ -158,7 +164,10 @@ import {
   accountSetAllReceive,
   accountSetAsTop,
   accountSignature,
-  accountSetSignature
+  accountSetSignature,
+  accountSort,
+  accountDomainOrder,
+  accountSetDomainOrder
 } from "@/request/account.js";
 import {sleep} from "@/utils/time-utils.js"
 import {isEmail} from "@/utils/verify-utils.js";
@@ -193,12 +202,27 @@ function domainOf(email) {
   return at >= 0 ? email.slice(at + 1) : email
 }
 
-// 展示排序：域名 A→Z，同域名内邮箱 A→Z
+// 自定义域名分组顺序（服务端 KV 按用户保存）；不在名单里的域名排在后面、按 A→Z
+const domainOrder = ref([])
+
+function domainRank(domain) {
+  const idx = domainOrder.value.indexOf(domain)
+  return idx === -1 ? Number.MAX_SAFE_INTEGER : idx
+}
+
+accountDomainOrder().then(list => {
+  domainOrder.value = Array.isArray(list) ? list : []
+  sortAccounts()
+}).catch(() => {})
+
+// 展示排序：先按域名自定义序（同域名内保持账户自身的顺序，即接口的 sort 序），未入名单的域名 A→Z 垫后
 function sortAccounts() {
   accounts.sort((a, b) => {
     const da = domainOf(a.email), db = domainOf(b.email)
-    if (da !== db) return da < db ? -1 : 1
-    return a.email < b.email ? -1 : a.email > b.email ? 1 : 0
+    if (da === db) return 0
+    const ra = domainRank(da), rb = domainRank(db)
+    if (ra !== rb) return ra - rb
+    return da < db ? -1 : 1
   })
 }
 
@@ -214,6 +238,67 @@ const accountGroups = computed(() => {
 
 function toggleGroup(domain) {
   collapsedDomains.has(domain) ? collapsedDomains.delete(domain) : collapsedDomains.add(domain)
+}
+
+// 拖拽排序：按住手柄后元素用 transform 跟随指针（不影响布局），松手按落点提交新顺序并持久化
+function beginDrag(event, el, siblings, onCommit) {
+  event.preventDefault()
+  const startY = event.clientY
+  const rects = siblings.map(s => s.getBoundingClientRect())
+  const from = siblings.indexOf(el)
+  let target = from
+  el.classList.add('dragging')
+  const computeTarget = (clientY) => {
+    let t = rects.length - 1
+    for (let i = 0; i < rects.length; i++) {
+      if (clientY < rects[i].top + rects[i].height / 2) { t = i; break }
+    }
+    return t
+  }
+  const onMove = (ev) => {
+    el.style.transform = `translateY(${ev.clientY - startY}px)`
+    target = computeTarget(ev.clientY)
+  }
+  const onUp = () => {
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    el.classList.remove('dragging')
+    el.style.transform = ''
+    if (target !== from) onCommit(from, target)
+  }
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+}
+
+function startAccountDrag(event, domain, accountId) {
+  const block = event.currentTarget.closest('.group-block')
+  const el = event.currentTarget.closest('.el-card.item')
+  if (!block || !el) return
+  const cards = [...block.querySelectorAll('.el-card.item')]
+  if (cards.length < 2) return
+  beginDrag(event, el, cards, (from, to) => {
+    // accounts 里同一域名的账户是连续段，按段内位置移动，再把全量顺序写回服务端
+    const positions = []
+    accounts.forEach((a, i) => { if (domainOf(a.email) === domain) positions.push(i) })
+    const moved = accounts.splice(positions[from], 1)[0]
+    accounts.splice(positions[to], 0, moved)
+    accountSort(accounts.map(a => a.accountId)).catch(() => {})
+  })
+}
+
+function startGroupDrag(event, domain) {
+  const block = event.currentTarget.closest('.group-block')
+  if (!block) return
+  const blocks = [...block.parentElement.querySelectorAll(':scope > .group-block')]
+  if (blocks.length < 2) return
+  beginDrag(event, block, blocks, (from, to) => {
+    const order = accountGroups.value.map(g => g.domain)
+    const [moved] = order.splice(from, 1)
+    order.splice(to, 0, moved)
+    domainOrder.value = order
+    sortAccounts()
+    accountSetDomainOrder(order).catch(() => {})
+  })
 }
 const noLoading = ref(false)
 const loading = ref(false)
@@ -749,6 +834,26 @@ path[fill="#ffdda1"] {
     :deep(.el-card__body) {
       padding: 0;
     }
+  }
+
+  .drag-handle {
+    display: inline-flex;
+    align-items: center;
+    color: #a8abb2;
+    cursor: grab;
+    touch-action: none;
+    flex-shrink: 0;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  .dragging {
+    position: relative;
+    z-index: 20;
+    opacity: 0.95;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
   }
 
   .group-head {

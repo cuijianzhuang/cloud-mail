@@ -278,6 +278,31 @@ const accountService = {
 		let mainSort = mainAccountRow.sort === 0 ? 2 : mainAccountRow.sort + 1;
 		await orm(c).update(account).set({ sort: mainSort }).where(eq(account.accountId, mainAccountRow.accountId)).run();
 		await orm(c).update(account).set({ sort: mainSort - 1 }).where(and(eq(account.accountId, accountId),eq(account.userId,userId))).run();
+	},
+
+	// 自定义排序：按前端给的顺序重写全部账户的 sort（列表按 sort 降序返回，排第一的 sort 最大）
+	async sortAccounts(c, params, userId) {
+		const requested = [...new Set((params.accountIds || []).map(id => Number(id)).filter(id => Number.isInteger(id) && id > 0))];
+		const rows = await orm(c).select({ accountId: account.accountId }).from(account)
+			.where(and(eq(account.userId, userId), eq(account.isDel, isDel.NORMAL)))
+			.orderBy(desc(account.sort), asc(account.accountId)).all();
+		const owned = rows.map(row => row.accountId);
+		const ownedSet = new Set(owned);
+		const ordered = [...requested.filter(id => ownedSet.has(id)), ...owned.filter(id => !requested.includes(id))];
+		for (let i = 0; i < ordered.length; i++) {
+			await orm(c).update(account).set({ sort: (ordered.length - i) * 10 })
+				.where(and(eq(account.accountId, ordered[i]), eq(account.userId, userId))).run();
+		}
+	},
+
+	async getDomainOrder(c, userId) {
+		const data = await c.env.kv.get(`domain_order:${userId}`, { type: 'json' });
+		return Array.isArray(data) ? data : [];
+	},
+
+	async setDomainOrder(c, params, userId) {
+		const domains = [...new Set((params.domains || []).map(d => String(d || '').trim()).filter(Boolean))];
+		await c.env.kv.put(`domain_order:${userId}`, JSON.stringify(domains));
 	}
 };
 
