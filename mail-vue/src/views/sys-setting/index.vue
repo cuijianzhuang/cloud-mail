@@ -461,6 +461,15 @@
             <div class="card-title">{{ $t('about') }}</div>
             <div class="card-content">
               <div class="concerning-item">
+                <span>{{ $t('siteBackup') }} :</span>
+                <el-button :loading="backupLoading" @click="downloadBackup">
+                  {{ $t('siteBackupExport') }}
+                  <template #icon>
+                    <Icon icon="material-symbols-light:download" style="font-size: 20px" color="#1890FF"/>
+                  </template>
+                </el-button>
+              </div>
+              <div class="concerning-item">
                 <span>{{ $t('version') }} :</span>
                 <el-badge is-dot :hidden="!hasUpdate">
                   <el-button @click="jump('https://github.com/maillab/cloud-mail/releases')">
@@ -979,6 +988,7 @@ Authorization: &lt;secret&gt;</pre>
 <script setup>
 import {computed, defineOptions, nextTick, reactive, ref} from "vue";
 import {deleteBackground, setBackground, setBlackList, settingQuery, settingSet, resendVerify } from "@/request/setting.js";
+import {exportBackup} from "@/request/export.js";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
@@ -1057,6 +1067,19 @@ const uiStore = useUiStore();
 const {settings: setting} = storeToRefs(settingStore);
 const editTitle = ref('')
 const settingLoading = ref(false)
+const backupLoading = ref(false)
+
+async function downloadBackup() {
+  backupLoading.value = true
+  try {
+    await exportBackup()
+    ElMessage({message: t('siteBackupDone'), type: 'success', plain: true})
+  } catch {
+    ElMessage({message: t('siteBackupFailed'), type: 'error', plain: true})
+  } finally {
+    backupLoading.value = false
+  }
+}
 const clearS3Loading = ref(false)
 const loginOpacity = ref(0)
 const minEmailPrefix = ref(0)
