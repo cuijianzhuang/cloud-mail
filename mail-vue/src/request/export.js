@@ -24,3 +24,8 @@ export function exportEml(emailId, subject) {
 export function exportMbox(accountId, type) {
     return download('/email/export-mbox', {accountId, type}, 'cloud-mail-export.mbox');
 }
+
+export function exportBackup() {
+    const date = new Date().toISOString().slice(0, 10);
+    return download('/setting/backup-export', {}, `cloud-mail-backup-${date}.json`);
+}
