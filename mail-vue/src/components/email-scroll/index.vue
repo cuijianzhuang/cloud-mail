@@ -243,6 +243,7 @@ import {Icon} from "@iconify/vue";
 import skeletonBlock from "@/components/email-scroll/skeleton/index.vue"
 import {computed, onActivated, reactive, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import {useEmailStore} from "@/store/email.js";
+import {useUnreadStore} from "@/store/unread.js";
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
 import {sleep} from "@/utils/time-utils.js"
@@ -312,6 +313,7 @@ const {t} = useI18n()
 const settingStore = useSettingStore()
 const uiStore = useUiStore();
 const emailStore = useEmailStore();
+const unreadStore = useUnreadStore();
 const loading = ref(false);
 const followLoading = ref(false);
 const noLoading = ref(false);
@@ -625,6 +627,7 @@ function localRead(emailIds) {
       emailList[index].checked = false;
     }
   })
+  unreadStore.refresh();
 }
 
 function rightDelete(emailId) {
@@ -642,6 +645,7 @@ function rightDelete(emailId) {
           plain: true
         })
         emailStore.deleteIds = [emailId];
+        unreadStore.refresh();
       })
     })
     return;
@@ -653,6 +657,7 @@ function rightDelete(emailId) {
       plain: true
     })
     emailStore.deleteIds = [emailId];
+    unreadStore.refresh();
   })
 }
 
@@ -699,6 +704,7 @@ function handleDelete() {
         plain: true
       })
       emailStore.deleteIds = emailIds;
+      unreadStore.refresh();
     })
   })
 }

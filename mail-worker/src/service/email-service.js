@@ -1123,10 +1123,10 @@ const emailService = {
 
 					if (!roleService.hasAvailDomainPerm(availDomain, email)) {
 						emailValues.status = emailConst.status.BOUNCED;
-						emailValues.message = `The recipient <${email}> is not authorized to use this domain.`;
+						emailValues.message = `内部投递被拒：收件人 <${email}> 所属角色的「可用域名」未包含 ${emailUtils.getDomain(email)}，请在「权限控制」中为该角色添加此域名。`;
 					} else if(roleService.isBanEmail(banEmail, sendEmailData.sendEmail)) {
 						emailValues.status = emailConst.status.BOUNCED;
-						emailValues.message = `The recipient <${email}> is disabled from receiving emails.`;
+						emailValues.message = `内部投递被拒：发件人 <${sendEmailData.sendEmail}> 在收件人 <${email}> 所属角色的「邮件拦截」名单内。`;
 					}
 
 				}
@@ -1632,7 +1632,83 @@ const emailService = {
 
 	async read(c, params, userId) {
 		const { emailIds } = params;
-		await orm(c).update(email).set({ unread: emailConst.unread.READ }).where(and(eq(email.userId, userId), inArray(email.emailId, emailIds)));
+		await orm(c).update(email).set({ unread: emailConst.unread.READ }).where(and(eq(email.userId, userId), inArray(email.emailId, emailIds))).run();
+	},
+
+	async unreadCounts(c, userId) {
+		const rows = await orm(c).select({ accountId: email.accountId, n: count() }).from(email)
+			.where(and(
+				eq(email.userId, userId),
+				eq(email.type, emailConst.type.RECEIVE),
+				eq(email.status, emailConst.status.RECEIVE),
+				eq(email.unread, emailConst.unread.UNREAD),
+				eq(email.isDel, isDel.NORMAL)
+			))
+			.groupBy(email.accountId).all();
+		const byAccount = {};
+		let total = 0;
+		for (const row of rows) {
+			byAccount[row.accountId] = row.n;
+			total += row.n;
+		}
+		return { total, byAccount };
+	},
+
+	// 发信前预检：只对系统内本地收件人给出结论，与内部投递同一套校验（可用域名 / 拦截名单）
+	async precheck(c, params, userId) {
+		const { accountId, recipients } = params;
+		const list = [...new Set((recipients || []).map(e => String(e || '').trim()).filter(Boolean))];
+		if (list.length === 0) {
+			return [];
+		}
+		const senderRow = await accountService.selectById(c, Number(accountId));
+		if (!senderRow || senderRow.userId !== userId) {
+			throw new BizError(t('emptyAccountId'));
+		}
+		const sendEmail = senderRow.email;
+
+		let accountList = await orm(c).select().from(account).where(inArray(sql`${account.email} COLLATE NOCASE`, list)).all();
+		const plusEmails = list.filter(
+			e => e.includes('+') && !accountList.some(a => a.email.toLowerCase() === e.toLowerCase())
+		);
+		const baseAccounts = [];
+		if (plusEmails.length > 0) {
+			const baseEmails = [...new Set(plusEmails.map(e => emailUtils.getBaseEmail(e)).filter(Boolean))];
+			const existing = new Set(accountList.map(a => a.email.toLowerCase()));
+			const needed = baseEmails.filter(e => !existing.has(e.toLowerCase()));
+			if (needed.length > 0) {
+				const rows = await orm(c).select().from(account)
+					.where(inArray(sql`${account.email} COLLATE NOCASE`, needed)).all();
+				baseAccounts.push(...rows);
+			}
+		}
+		const allAccounts = [...accountList, ...baseAccounts];
+		const roleList = await roleService.selectByUserIds(c, allAccounts.map(a => a.userId));
+
+		return list.map(email => {
+			let accountRow = allAccounts.find(a => a.email.toLowerCase() === email.toLowerCase());
+			if (!accountRow && email.includes('+')) {
+				const baseEmail = emailUtils.getBaseEmail(email);
+				accountRow = allAccounts.find(a => a.email.toLowerCase() === baseEmail.toLowerCase());
+			}
+			if (!accountRow) {
+				return { email, local: false, ok: true, reason: null };
+			}
+			if (email === c.env.admin) {
+				return { email, local: true, ok: true, reason: null };
+			}
+			const roleRow = roleList.find(r => r.userId === accountRow.userId);
+			if (!roleRow) {
+				return { email, local: true, ok: true, reason: null };
+			}
+			if (!roleService.hasAvailDomainPerm(roleRow.availDomain, email)) {
+				return { email, local: true, ok: false, reason: 'domain' };
+			}
+			if (roleService.isBanEmail(roleRow.banEmail, sendEmail)) {
+				return { email, local: true, ok: false, reason: 'banned' };
+			}
+			return { email, local: true, ok: true, reason: null };
+		});
 	}
 };
 

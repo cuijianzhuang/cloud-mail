@@ -19,6 +19,7 @@
 <script setup>
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
+import {useUnreadStore} from "@/store/unread.js";
 import {useSettingStore} from "@/store/setting.js";
 import emailScroll from "@/components/email-scroll/index.vue"
 import {emailList, emailDelete, emailLatest, emailRead} from "@/request/email.js";
@@ -95,6 +96,7 @@ function onWsMessage(event) {
   if (!allReceive && event?.accountId != null && Number(event.accountId) !== Number(accountStore.currentAccountId)) {
     return
   }
+  useUnreadStore().refresh()
   schedulePullLatest()
 }
 

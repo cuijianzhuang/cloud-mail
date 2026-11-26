@@ -178,7 +178,7 @@ import tinyEditor from '@/components/tiny-editor/index.vue'
 import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
-import {emailSend, emailRecipients} from "@/request/email.js";
+import {emailSend, emailRecipients, emailPrecheck} from "@/request/email.js";
 import {accountSignature} from "@/request/account.js";
 import {scheduledCreate} from "@/request/scheduled.js";
 import {isEmail} from "@/utils/verify-utils.js";
@@ -558,6 +558,28 @@ async function sendEmail() {
     return
   }
 
+  // 发信前预检：本地收件人的可用域名/拦截名单校验，不合格先提示再决定是否继续
+  let blocked = []
+  try {
+    const checks = await emailPrecheck(form.accountId, [...form.receiveEmail, ...form.ccEmail, ...form.bccEmail])
+    blocked = (checks || []).filter(item => item.local && !item.ok)
+  } catch {
+    // 预检接口异常不阻断发送
+  }
+  if (blocked.length > 0) {
+    const lines = blocked.map(item => `${item.email}：${item.reason === 'banned' ? t('precheckBanned') : t('precheckDomain')}`)
+    try {
+      await ElMessageBox.confirm(lines.join('\n'), t('precheckTitle'), {
+        confirmButtonText: t('precheckContinue'),
+        cancelButtonText: t('cancel'),
+        type: 'warning',
+        customClass: 'precheck-confirm'
+      })
+    } catch {
+      return
+    }
+  }
+
   percentMessage = ElMessage({
     message: () => h(sendPercent, {value: percent.value, desc: t('sending')}),
     dangerouslyUseHTMLString: true,
@@ -869,6 +891,9 @@ function close() {
 
 </script>
 <style>
+.precheck-confirm .el-message-box__message p {
+  white-space: pre-line;
+}
 .write-select .el-select-dropdown__list {
   padding: 4px 4px !important;
 }
