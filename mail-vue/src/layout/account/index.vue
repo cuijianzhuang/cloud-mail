@@ -18,6 +18,7 @@
                  @click="changeAccount(item)">
           <div class="account">
             {{ item.email }}
+            <span v-if="unreadStore.byAccount[item.accountId]" class="unread-badge">{{ unreadStore.byAccount[item.accountId] > 99 ? '99+' : unreadStore.byAccount[item.accountId] }}</span>
           </div>
           <div class="opt">
             <div class="send-email" @click.stop>
@@ -162,6 +163,7 @@ import {
 import {sleep} from "@/utils/time-utils.js"
 import {isEmail} from "@/utils/verify-utils.js";
 import {useSettingStore} from "@/store/setting.js";
+import {useUnreadStore} from "@/store/unread.js";
 import {useAccountStore} from "@/store/account.js";
 import {useEmailStore} from "@/store/email.js";
 import {useUserStore} from "@/store/user.js";
@@ -175,6 +177,7 @@ const {t} = useI18n();
 const userStore = useUserStore();
 const accountStore = useAccountStore();
 const settingStore = useSettingStore();
+const unreadStore = useUnreadStore();
 const emailStore = useEmailStore();
 const showAdd = ref(false)
 const addLoading = ref(false);
@@ -708,6 +711,21 @@ path[fill="#ffdda1"] {
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
+
+      .unread-badge {
+        display: inline-block;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        margin-left: 6px;
+        border-radius: 10px;
+        background: #f56c6c;
+        color: #fff;
+        font-size: 12px;
+        line-height: 20px;
+        text-align: center;
+        vertical-align: 1px;
+      }
     }
 
     .opt {

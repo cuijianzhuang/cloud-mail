@@ -98,6 +98,7 @@ import {aiSummarize, aiTranslate} from "@/request/ai.js";
 import {exportEml} from "@/request/export.js";
 import {Icon} from "@iconify/vue";
 import {useEmailStore} from "@/store/email.js";
+import {useUnreadStore} from "@/store/unread.js";
 import {useAccountStore} from "@/store/account.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {starAdd, starCancel} from "@/request/star.js";
@@ -193,6 +194,7 @@ function tryMarkRead() {
   emailStore.markListRead(emailId)
   emailRead([emailId]).finally(() => {
     readRequesting = false
+    useUnreadStore().refresh()
   })
 }
 

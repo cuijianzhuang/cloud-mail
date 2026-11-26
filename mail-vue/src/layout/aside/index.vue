@@ -14,6 +14,7 @@
                       :class="route.meta.name === 'email' ? 'choose-item' : ''">
           <Icon icon="hugeicons:mailbox-01" width="20" height="20" />
           <span class="menu-name" style="margin-left: 16px">{{$t('inbox')}}</span>
+          <span v-if="unreadStore.total > 0" class="unread-badge">{{ unreadStore.total > 99 ? '99+' : unreadStore.total }}</span>
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'send'})" index="send" v-perm="'email:send'"
                       :class="route.meta.name === 'send' ? 'choose-item' : ''">
@@ -75,11 +76,15 @@
 
 <script setup>
 import router from "@/router/index.js";
-import {computed} from "vue";
+import {computed, onMounted} from "vue";
 import { useRoute } from "vue-router";
 import {Icon} from "@iconify/vue";
 import {useSettingStore} from "@/store/setting.js";
 import {useUiStore} from "@/store/ui.js";
+import {useUnreadStore} from "@/store/unread.js";
+
+const unreadStore = useUnreadStore();
+onMounted(() => unreadStore.refresh());
 
 const settingStore = useSettingStore();
 const uiStore = useUiStore();
@@ -94,6 +99,19 @@ function openCompose() {
 </script>
 
 <style lang="scss" scoped>
+
+.unread-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: #f56c6c;
+  color: #fff;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+}
 
 @font-face {
   font-family: "BAHAMASB";

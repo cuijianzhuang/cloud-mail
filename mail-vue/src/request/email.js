@@ -29,3 +29,11 @@ export function emailSend(form,progress) {
 export function emailRecipients() {
     return http.get('/email/recipients')
 }
+
+export function emailUnreadCounts() {
+    return http.get('/email/unread-counts', {noMsg: true})
+}
+
+export function emailPrecheck(accountId, recipients) {
+    return http.post('/email/precheck', {accountId, recipients}, {noMsg: true})
+}
