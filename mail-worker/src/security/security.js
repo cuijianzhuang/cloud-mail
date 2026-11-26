@@ -10,6 +10,7 @@ import app from '../hono/hono';
 
 const exclude = [
 	'/login',
+	'/login/totp',
 	'/register',
 	'/oss',
 	'/setting/websiteConfig',

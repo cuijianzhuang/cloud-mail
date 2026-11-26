@@ -31,6 +31,14 @@
           <el-button type="primary" @click="pwdShow = true">{{$t('changePwdBtn')}}</el-button>
         </div>
       </div>
+      <div class="item setting-row">
+        <div>{{$t('totpTitle')}}</div>
+        <div>
+          <el-button v-if="totpEnabled" @click="totpDisableShow = true">{{$t('totpDisableBtn')}}</el-button>
+          <el-button v-else type="primary" @click="startTotpSetup">{{$t('totpEnableBtn')}}</el-button>
+          <span class="totp-state">{{ totpEnabled ? $t('totpOn') : $t('totpOff') }}</span>
+        </div>
+      </div>
     </div>
     <div class="oauth-bind" v-if="oauthPlatformList.length > 0">
       <div class="title">{{$t('accountBind')}}</div>
@@ -95,13 +103,39 @@
         <el-button type="primary" :loading="setPwdLoading" @click="submitPwd">{{$t('save')}}</el-button>
       </div>
     </el-dialog>
+    <el-dialog v-model="totpSetupShow" :title="$t('totpSetupTitle')" width="360">
+      <div class="update-pwd">
+        <div class="totp-qr"><img v-if="totpQr" :src="totpQr" alt=""/></div>
+        <div class="totp-secret">{{ $t('totpSecretLabel') }}：<span>{{ totpSecret }}</span></div>
+        <div class="totp-tip">{{ $t('totpScanHint') }}</div>
+        <el-input v-model="totpCode" :placeholder="$t('totpCodePlaceholder')" autocomplete="off" @keyup.enter="submitTotpEnable"/>
+        <el-button type="primary" :loading="totpLoading" @click="submitTotpEnable">{{$t('totpConfirmEnable')}}</el-button>
+      </div>
+    </el-dialog>
+    <el-dialog v-model="totpRecoveryShow" :title="$t('totpRecoveryTitle')" width="360" :close-on-click-modal="false" :show-close="false">
+      <div class="update-pwd">
+        <div class="totp-tip">{{ $t('totpRecoveryDesc') }}</div>
+        <div class="totp-codes">
+          <span v-for="code in totpRecoveryCodes" :key="code">{{ code }}</span>
+        </div>
+        <el-button type="primary" @click="totpRecoveryShow = false">{{$t('totpRecoverySaved')}}</el-button>
+      </div>
+    </el-dialog>
+    <el-dialog v-model="totpDisableShow" :title="$t('totpDisableTitle')" width="340">
+      <div class="update-pwd">
+        <div class="totp-tip">{{ $t('totpDisableHint') }}</div>
+        <el-input v-model="totpDisableCode" :placeholder="$t('totpCodePlaceholder')" autocomplete="off" @keyup.enter="submitTotpDisable"/>
+        <el-button type="primary" :loading="totpLoading" @click="submitTotpDisable">{{$t('confirm')}}</el-button>
+      </div>
+    </el-dialog>
   </div>
     </el-scrollbar>
   </div>
 </template>
 <script setup>
 import {reactive, ref, computed, onMounted, defineOptions} from 'vue'
-import {resetPassword, userDelete} from "@/request/my.js";
+import {resetPassword, userDelete, totpStatus, totpSetup, totpEnable, totpDisable} from "@/request/my.js";
+import QRCode from "qrcode";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
 import {accountSetName} from "@/request/account.js";
@@ -215,7 +249,70 @@ const oauthPlatformList = computed(() => {
 
 onMounted(() => {
   loadBindList()
+  loadTotpStatus()
 })
+
+const totpEnabled = ref(false)
+const totpSetupShow = ref(false)
+const totpDisableShow = ref(false)
+const totpRecoveryShow = ref(false)
+const totpSecret = ref('')
+const totpQr = ref('')
+const totpCode = ref('')
+const totpDisableCode = ref('')
+const totpRecoveryCodes = ref([])
+const totpLoading = ref(false)
+
+function loadTotpStatus() {
+  totpStatus().then(data => {
+    totpEnabled.value = !!data.enabled
+  }).catch(() => {})
+}
+
+async function startTotpSetup() {
+  try {
+    const data = await totpSetup()
+    totpSecret.value = data.secret
+    totpQr.value = await QRCode.toDataURL(data.otpauthUrl, {width: 200, margin: 1})
+    totpCode.value = ''
+    totpSetupShow.value = true
+  } catch {}
+}
+
+function submitTotpEnable() {
+  if (totpLoading.value || !totpCode.value.trim()) return
+  totpLoading.value = true
+  totpEnable(totpCode.value.trim()).then(data => {
+    totpSetupShow.value = false
+    totpEnabled.value = true
+    totpRecoveryCodes.value = data.recoveryCodes || []
+    totpRecoveryShow.value = true
+    ElMessage({
+      message: t('totpEnableSuccess'),
+      type: 'success',
+      plain: true,
+    })
+  }).catch(() => {}).finally(() => {
+    totpLoading.value = false
+  })
+}
+
+function submitTotpDisable() {
+  if (totpLoading.value || !totpDisableCode.value.trim()) return
+  totpLoading.value = true
+  totpDisable(totpDisableCode.value.trim()).then(() => {
+    totpDisableShow.value = false
+    totpDisableCode.value = ''
+    totpEnabled.value = false
+    ElMessage({
+      message: t('totpDisableSuccess'),
+      type: 'success',
+      plain: true,
+    })
+  }).catch(() => {}).finally(() => {
+    totpLoading.value = false
+  })
+}
 
 function loadBindList() {
   oauthBindList().then(list => {
@@ -312,6 +409,48 @@ function submitPwd() {
     display: flex;
     flex-direction: column;
     gap: 15px;
+  }
+
+  .totp-state {
+    margin-left: 10px;
+    color: var(--regular-text-color);
+  }
+
+  .totp-qr {
+    text-align: center;
+
+    img {
+      width: 200px;
+      height: 200px;
+    }
+  }
+
+  .totp-secret {
+    font-size: 13px;
+    word-break: break-all;
+
+    span {
+      font-family: monospace;
+      font-weight: bold;
+    }
+  }
+
+  .totp-tip {
+    font-size: 13px;
+    color: var(--regular-text-color);
+    line-height: 1.5;
+  }
+
+  .totp-codes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-family: monospace;
+    font-size: 15px;
+    text-align: center;
+    background: var(--el-fill-color-light);
+    border-radius: 6px;
+    padding: 12px;
   }
 
   .title {
