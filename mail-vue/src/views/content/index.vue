@@ -9,6 +9,7 @@
       </span>
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="fluent-mdl2:reply" width="19" height="19" />
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <el-button size="small" v-if="canResend" v-perm="'email:send'" :loading="resending" @click="handleResend">{{$t('resend')}}</el-button>
       <el-button size="small" :loading="aiLoading === 'summary'" @click="doSummary">{{$t('aiSummary')}}</el-button>
       <el-button size="small" :loading="aiLoading === 'translate'" @click="doTranslate">{{$t('aiTranslate')}}</el-button>
       <Icon class="icon" @click="handleExport" icon="material-symbols-light:download" width="20" height="20" :title="$t('exportEml')"/>
@@ -93,7 +94,7 @@ import ShadowHtml from '@/components/shadow-html/index.vue'
 import {computed, reactive, ref, watch, onMounted, onUnmounted, nextTick} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
-import {emailDelete, emailRead} from "@/request/email.js";
+import {emailDelete, emailRead, emailSend} from "@/request/email.js";
 import {aiSummarize, aiTranslate} from "@/request/ai.js";
 import {exportEml} from "@/request/export.js";
 import {Icon} from "@iconify/vue";
@@ -102,7 +103,7 @@ import {useUnreadStore} from "@/store/unread.js";
 import {useAccountStore} from "@/store/account.js";
 import {formatDetailDate} from "@/utils/day.js";
 import {starAdd, starCancel} from "@/request/star.js";
-import {getExtName, formatBytes} from "@/utils/file-utils.js";
+import {getExtName, formatBytes, fileToBase64} from "@/utils/file-utils.js";
 import {cvtR2Url,toOssDomain} from "@/utils/convert.js";
 import {getIconByName} from "@/utils/icon-utils.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -246,8 +247,67 @@ function openForward() {
   uiStore.writerRef.openForward(email.value)
 }
 
+// 已发送且状态为退回(3)/失败(8)时可一键重发
+const canResend = computed(() => email.value?.type === 1 && (email.value?.status === 3 || email.value?.status === 8))
+const resending = ref(false)
+
+async function handleResend() {
+  try {
+    await ElMessageBox.confirm(t('resendConfirm'), t('resend'), {
+      confirmButtonText: t('confirm'),
+      cancelButtonText: t('cancel'),
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+  resending.value = true
+  try {
+    // 优先用完整详情（列表摘要的正文是截断的）
+    const e = emailStore.detailMap[email.value.emailId] || email.value
+    const parseAddrs = (s) => {
+      try {
+        return JSON.parse(s || '[]').map(item => item.address).filter(Boolean)
+      } catch {
+        return []
+      }
+    }
+    const attachments = []
+    for (const att of e.attList || []) {
+      const resp = await fetch(cvtR2Url(att.key))
+      const blob = await resp.blob()
+      const content = await fileToBase64(blob)
+      attachments.push({content, filename: att.filename, size: att.size, contentType: att.contentType || blob.type})
+    }
+    const result = await emailSend({
+      accountId: e.accountId,
+      receiveEmail: parseAddrs(e.recipient),
+      ccEmail: parseAddrs(e.cc),
+      bccEmail: parseAddrs(e.bcc),
+      subject: e.subject,
+      content: e.content,
+      text: e.text,
+      attachments,
+      useSignature: false
+    }, () => {})
+    const sentList = Array.isArray(result) ? result : result.emails
+    sentList?.forEach(item => emailStore.sendScroll?.addItem(item))
+    ElMessage({message: t('resendSuccess'), type: 'success', plain: true})
+    handleBack()
+  } catch (err) {
+    ElMessage({message: err?.message || t('resendFailed'), type: 'error', plain: true})
+  } finally {
+    resending.value = false
+  }
+}
+
 function toMessage(message) {
-  return  message ? JSON.parse(message).message : '';
+  if (!message) return '';
+  try {
+    return JSON.parse(message).message ?? message;
+  } catch {
+    return message;
+  }
 }
 
 function formatImage(content) {

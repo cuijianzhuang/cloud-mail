@@ -343,6 +343,7 @@ const en = {
     precheckBanned: 'You are on the recipient block list; it will be bounced',
     precheckContinue: 'Send anyway',
     resend: 'Resend',
+    resendFailed: 'Resend failed',
     resendSuccess: 'Resent',
     resendConfirm: 'Resend this email to the original recipients with the original content?',
     sendFailMsg: 'Send failed',

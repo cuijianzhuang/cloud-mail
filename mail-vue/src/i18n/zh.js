@@ -343,6 +343,7 @@ const zh = {
     precheckBanned: '你在对方的邮件拦截名单内，将被拒收',
     precheckContinue: '仍要发送',
     resend: '重新发送',
+    resendFailed: '重发失败',
     resendSuccess: '已重新发送',
     resendConfirm: '按原收件人和内容重新发送这封邮件？',
     sendFailMsg: '发送失败',
