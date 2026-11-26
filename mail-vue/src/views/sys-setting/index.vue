@@ -457,18 +457,28 @@
             </div>
           </div>
 
+          <div class="settings-card">
+            <div class="card-title">{{ $t('dataBackup') }}</div>
+            <div class="card-content">
+              <div class="setting-item">
+                <div>
+                  <span>{{ $t('siteBackup') }}</span>
+                  <el-tooltip effect="dark" :content="$t('siteBackupDesc')">
+                    <Icon class="warning" icon="fe:warning" width="18" height="18"/>
+                  </el-tooltip>
+                </div>
+                <div>
+                  <el-button class="opt-button" size="small" type="primary" :loading="backupLoading" @click="downloadBackup">
+                    {{ $t('siteBackupExport') }}
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="settings-card about">
             <div class="card-title">{{ $t('about') }}</div>
             <div class="card-content">
-              <div class="concerning-item">
-                <span>{{ $t('siteBackup') }} :</span>
-                <el-button :loading="backupLoading" @click="downloadBackup">
-                  {{ $t('siteBackupExport') }}
-                  <template #icon>
-                    <Icon icon="material-symbols-light:download" style="font-size: 20px" color="#1890FF"/>
-                  </template>
-                </el-button>
-              </div>
               <div class="concerning-item">
                 <span>{{ $t('version') }} :</span>
                 <el-badge is-dot :hidden="!hasUpdate">
