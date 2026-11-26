@@ -34,6 +34,21 @@ app.put('/account/setAsTop', async (c) => {
 	return c.json(result.ok());
 });
 
+app.put('/account/sort', async (c) => {
+	await accountService.sortAccounts(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
+app.get('/account/domain-order', async (c) => {
+	const domains = await accountService.getDomainOrder(c, userContext.getUserId(c));
+	return c.json(result.ok(domains));
+});
+
+app.put('/account/domain-order', async (c) => {
+	await accountService.setDomainOrder(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok());
+});
+
 app.get('/account/signature', async (c) => {
 	const data = await signatureService.get(c, c.req.query(), userContext.getUserId(c));
 	return c.json(result.ok(data));
