@@ -1,5 +1,10 @@
 const zh = {
 	IncorrectPwd: '密码输入错误',
+	totpAlreadyEnabled: '两步验证已开启',
+	totpSetupExpired: '绑定已超时，请重新开始绑定',
+	totpCodeInvalid: '验证码不正确',
+	totpTicketExpired: '验证已超时，请重新登录',
+	totpTooManyAttempts: '验证码错误次数过多，请重新登录',
 	addAccountDisabled: '添加邮箱功能已关闭',
 	regDisabled: '注册功能已关闭',
 	emptyEmail: '邮箱不能为空',

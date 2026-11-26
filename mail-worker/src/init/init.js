@@ -27,9 +27,25 @@ const dbInit = {
 		await this.v3_7DB(c);
 		await this.v3_8DB(c);
 		await this.v3_9DB(c);
+		await this.v3_10DB(c);
 		await userService.initAdmin(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v3_10DB(c) {
+		const alters = [
+			`ALTER TABLE user ADD COLUMN totp_secret TEXT NOT NULL DEFAULT '';`,
+			`ALTER TABLE user ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0;`,
+			`ALTER TABLE user ADD COLUMN totp_recovery TEXT NOT NULL DEFAULT '';`,
+		];
+		for (const sqlText of alters) {
+			try {
+				await c.env.db.prepare(sqlText).run();
+			} catch (e) {
+				console.warn(`sql skip:${e.message}`);
+			}
+		}
 	},
 
 	async v3_9DB(c) {

@@ -14,9 +14,19 @@
     <div class="form-wrapper">
       <div class="container">
         <span class="form-title">{{ settingStore.settings.title }}</span>
-        <span class="form-desc" v-if="show === 'login'">{{ $t('loginTitle') }}</span>
+        <span class="form-desc" v-if="show === 'login' && totpStep">{{ $t('totpLoginTitle') }}</span>
+        <span class="form-desc" v-else-if="show === 'login'">{{ $t('loginTitle') }}</span>
         <span class="form-desc" v-else>{{ $t('regTitle') }}</span>
-        <div v-show="show === 'login'">
+        <div v-show="show === 'login' && totpStep">
+          <div class="totp-hint">{{ $t('totpLoginHint') }}</div>
+          <el-input v-model="totpCode" :placeholder="$t('totpCodePlaceholder')" type="text" autocomplete="off" @keyup.enter="submitTotp">
+          </el-input>
+          <el-button class="btn" type="primary" @click="submitTotp" :loading="totpLoading"
+          >{{ $t('totpVerifyBtn') }}
+          </el-button>
+          <div class="switch" @click="backToLogin">{{ $t('totpBackToLogin') }}</div>
+        </div>
+        <div v-show="show === 'login' && !totpStep">
           <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="form.email"
                     type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="submit">
             <template #append v-if="!hideLoginDomain">
@@ -107,7 +117,7 @@
             {{ p.label }}
           </el-button>
         </div>
-        <template v-if="settingStore.settings.register === 0">
+        <template v-if="settingStore.settings.register === 0 && !totpStep">
           <div class="switch" @click="show = 'register'" v-if="show === 'login'">{{ $t('noAccount') }}
             <span>{{ $t('regSwitch') }}</span></div>
           <div class="switch" @click="show = 'login'" v-else>{{ $t('hasAccount') }} <span>{{ $t('loginSwitch') }}</span>
@@ -160,6 +170,7 @@ import router from "@/router";
 import {useRoute} from "vue-router";
 import {computed, nextTick, onBeforeUnmount, reactive, ref, watch} from "vue";
 import {login} from "@/request/login.js";
+import {loginTotp} from "@/request/login.js";
 import {register} from "@/request/login.js";
 import {websiteConfig} from "@/request/setting.js";
 import {isEmail} from "@/utils/verify-utils.js";
@@ -188,6 +199,10 @@ const bindLoading = ref(false)
 const oauthLoading = ref(false);
 const showBindForm = ref(false);
 const show = ref('login')
+const totpStep = ref(false)
+const totpTicket = ref('')
+const totpCode = ref('')
+const totpLoading = ref(false)
 
 const oauthProvider = computed(() => {
   const fromState = route.query.state
@@ -494,12 +509,39 @@ const submit = () => {
 
   const token = verifyToken
   loginLoading.value = true
-  login(email, form.password, token).then(data => saveToken(data.token)).catch(res => {
+  login(email, form.password, token).then(data => {
+    if (data.totpRequired) {
+      totpTicket.value = data.ticket
+      totpCode.value = ''
+      totpStep.value = true
+      return
+    }
+    saveToken(data.token)
+  }).catch(res => {
     if (res.code === 400) settingStore.settings.loginVerifyOpen = true
     if (show.value === 'login' && (token || res.code === 400)) showTurnstile()
   }).finally(() => {
     loginLoading.value = false
   })
+}
+
+function submitTotp() {
+  if (totpLoading.value || !totpCode.value.trim()) return
+  totpLoading.value = true
+  loginTotp(totpTicket.value, totpCode.value.trim()).then(data => {
+    totpStep.value = false
+    saveToken(data.token)
+  }).catch(() => {
+    totpCode.value = ''
+  }).finally(() => {
+    totpLoading.value = false
+  })
+}
+
+function backToLogin() {
+  totpStep.value = false
+  totpTicket.value = ''
+  totpCode.value = ''
 }
 
 async function saveToken(token) {
@@ -710,6 +752,13 @@ function submitRegister() {
     margin-top: 5px;
     margin-bottom: 18px;
     color: var(--form-desc-color);
+  }
+
+  .totp-hint {
+    font-size: 13px;
+    color: var(--form-desc-color);
+    margin-bottom: 12px;
+    line-height: 1.5;
   }
 
   .form-title {

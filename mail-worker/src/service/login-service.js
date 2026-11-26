@@ -19,6 +19,7 @@ import dayjs from 'dayjs';
 import { toUtc } from '../utils/date-uitil';
 import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
+import totpService from './totp-service';
 
 const loginService = {
 
@@ -254,6 +255,51 @@ const loginService = {
 		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password) && !noVerifyPwd) {
 			throw new BizError(t('IncorrectPwd'));
 		}
+
+		// 开启两步验证的账号（仅密码登录，OAuth 登录不走这一步）：先发一张 5 分钟有效的票据，验码通过后再签发令牌
+		if (!noVerifyPwd && userRow.totpEnabled === 1) {
+			const ticket = uuidv4();
+			await c.env.kv.put(KvConst.TOTP_TICKET + ticket, JSON.stringify({ userId: userRow.userId, attempts: 0 }), { expirationTtl: 300 });
+			return { totpRequired: true, ticket };
+		}
+
+		return await this.issueToken(c, userRow);
+	},
+
+	// 两步验证第二段：凭票据 + 动态码（或恢复码）换正式令牌；错码累计 5 次票据作废
+	async verifyTotp(c, params) {
+
+		const { ticket, code } = params;
+
+		const key = KvConst.TOTP_TICKET + (ticket || '');
+		const data = ticket ? await c.env.kv.get(key, { type: 'json' }) : null;
+
+		if (!data) {
+			throw new BizError(t('totpTicketExpired'));
+		}
+
+		const userRow = await userService.selectById(c, data.userId);
+
+		if (!userRow || userRow.totpEnabled !== 1) {
+			await c.env.kv.delete(key);
+			throw new BizError(t('totpTicketExpired'));
+		}
+
+		if (!await totpService.verifyUserCode(c, userRow, code)) {
+			const attempts = (data.attempts || 0) + 1;
+			if (attempts >= 5) {
+				await c.env.kv.delete(key);
+				throw new BizError(t('totpTooManyAttempts'));
+			}
+			await c.env.kv.put(key, JSON.stringify({ ...data, attempts }), { expirationTtl: 300 });
+			throw new BizError(t('totpCodeInvalid'));
+		}
+
+		await c.env.kv.delete(key);
+		return await this.issueToken(c, userRow);
+	},
+
+	async issueToken(c, userRow) {
 
 		const uuid = uuidv4();
 		const jwt = await JwtUtils.generateToken(c,{ userId: userRow.userId, token: uuid, gen: constant.AUTH_GEN });
