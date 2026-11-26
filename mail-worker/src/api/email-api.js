@@ -39,3 +39,13 @@ app.put('/email/read', async (c) => {
 	return c.json(result.ok());
 })
 
+app.get('/email/unread-counts', async (c) => {
+	const data = await emailService.unreadCounts(c, userContext.getUserId(c));
+	return c.json(result.ok(data));
+});
+
+app.post('/email/precheck', async (c) => {
+	const data = await emailService.precheck(c, await c.req.json(), userContext.getUserId(c));
+	return c.json(result.ok(data));
+});
+
